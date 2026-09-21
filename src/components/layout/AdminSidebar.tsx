@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAdminStore } from "@/context/admin-store";
 import {
   LayoutDashboard,
@@ -29,7 +30,9 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentUser, logout, lowStockCount, orders } = useAdminStore();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const pendingOrdersCount = orders.filter((o) => o.status === "PENDING").length;
 
@@ -189,7 +192,8 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
               </div>
             </div>
             <button
-              onClick={logout}
+              type="button"
+              onClick={() => setShowLogoutModal(true)}
               title="Logout"
               className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-colors cursor-pointer"
             >
@@ -198,6 +202,22 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={async () => {
+          await logout();
+          setShowLogoutModal(false);
+          router.push("/login");
+        }}
+        title="Confirm Sign Out"
+        message="Are you sure you want to sign out of the ATM Crackers Admin Dashboard? You will need your administrative credentials to log back in."
+        confirmText="Sign Out"
+        cancelText="Stay Logged In"
+        variant="danger"
+        icon={<LogOut className="w-5 h-5 text-red-500" />}
+      />
     </>
   );
 }

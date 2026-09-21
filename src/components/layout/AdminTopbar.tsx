@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAdminStore } from "@/context/admin-store";
 import {
   Menu,
@@ -13,6 +15,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
+  LogOut,
 } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 
@@ -21,8 +24,10 @@ interface AdminTopbarProps {
 }
 
 export function AdminTopbar({ onToggleMobileMenu }: AdminTopbarProps) {
-  const { currentUser, lowStockCount, orders } = useAdminStore();
+  const router = useRouter();
+  const { currentUser, logout, lowStockCount, orders } = useAdminStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const pendingOrders = orders.filter((o) => o.status === "PENDING");
   const totalNotifications = (lowStockCount > 0 ? 1 : 0) + pendingOrders.length;
@@ -155,8 +160,33 @@ export function AdminTopbar({ onToggleMobileMenu }: AdminTopbarProps) {
               Sivakasi HQ
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowLogoutModal(true)}
+            title="Sign Out"
+            className="ml-1.5 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={async () => {
+          await logout();
+          setShowLogoutModal(false);
+          router.push("/login");
+        }}
+        title="Confirm Sign Out"
+        message="Are you sure you want to sign out of the ATM Crackers Admin Dashboard? You will need your administrative credentials to sign back in."
+        confirmText="Sign Out"
+        cancelText="Stay Logged In"
+        variant="danger"
+        icon={<LogOut className="w-5 h-5 text-red-500" />}
+      />
     </header>
   );
 }

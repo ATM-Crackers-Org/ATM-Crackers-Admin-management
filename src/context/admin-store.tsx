@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { logout as apiLogout } from "@/services/auth.service";
+import { TokenStore } from "@/lib/axiosInstance";
 import {
   Product,
   Category,
@@ -36,7 +38,7 @@ interface AdminStoreContextType {
   // Auth
   currentUser: AdminUser | null;
   login: (email: string, role?: AdminUser["role"], name?: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 
   // Products
@@ -49,6 +51,7 @@ interface AdminStoreContextType {
 
   // Categories
   categories: Category[];
+  setCategoriesList: (cats: Category[]) => void;
   addCategory: (cat: Omit<Category, "id">) => Category;
   updateCategory: (id: string, cat: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
@@ -116,11 +119,11 @@ const AdminStoreContext = createContext<AdminStoreContextType | null>(null);
 const STORAGE_KEY = "atm_crackers_admin_store_v1";
 
 export function AdminStoreProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<AdminUser | null>({
-    id: "usr-admin-1",
-    name: "Admin Officer",
-    role: "SUPER_ADMIN",
-    email: "admin@atmcrackers.com",
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => {
+    if (typeof window !== "undefined" && !TokenStore.getAccess()) {
+      return null;
+    }
+    return null;
   });
 
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -151,7 +154,11 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         if (parsed.banners) setBanners(parsed.banners);
         if (parsed.auditLogs) setAuditLogs(parsed.auditLogs);
         if (parsed.settings) setSettings(parsed.settings);
-        if (parsed.currentUser !== undefined) setCurrentUser(parsed.currentUser);
+        if (parsed.currentUser !== undefined && TokenStore.getAccess()) {
+          setCurrentUser(parsed.currentUser);
+        } else {
+          setCurrentUser(null);
+        }
       }
     } catch (e) {
       console.warn("Failed to load state from localStorage:", e);
@@ -217,11 +224,21 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     toast.success(`Welcome back, ${name}!`);
   };
 
-  const logout = () => {
+  const logout = async () => {
     const prevName = currentUser?.name || "Admin";
-    logAction("USER_LOGOUT", "AUTH", `User logged out: ${prevName}`);
-    setCurrentUser(null);
-    toast.info("Logged out successfully.");
+    try {
+      const refreshToken = TokenStore.getRefresh();
+      if (refreshToken) {
+        await apiLogout({ refreshToken });
+      }
+    } catch (err) {
+      console.warn("API logout error (clearing local session):", err);
+    } finally {
+      TokenStore.clear();
+      logAction("USER_LOGOUT", "AUTH", `User logged out: ${prevName}`);
+      setCurrentUser(null);
+      toast.info("Logged out successfully.");
+    }
   };
 
   // Products
@@ -295,6 +312,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     );
     logAction("CATEGORY_UPDATE", "CATEGORIES", `Updated category: ${id}`);
     toast.success("Category updated successfully!");
+  };
+
+  const setCategoriesList = (cats: Category[]) => {
+    setCategories(cats);
   };
 
   const deleteCategory = (id: string) => {
@@ -606,7 +627,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         currentUser,
         login,
         logout,
-        isAuthenticated: !!currentUser,
+        isAuthenticated: !!currentUser && (typeof window === "undefined" || !!TokenStore.getAccess()),
         products,
         addProduct,
         updateProduct,
@@ -614,6 +635,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         toggleProductActive,
         toggleProductFeatured,
         categories,
+        setCategoriesList,
         addCategory,
         updateCategory,
         deleteCategory,
