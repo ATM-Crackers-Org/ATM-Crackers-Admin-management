@@ -43,6 +43,7 @@ interface AdminStoreContextType {
 
   // Products
   products: Product[];
+  setProductsList: (products: Product[]) => void;
   addProduct: (product: Omit<Product, "id" | "createdAt">) => Product;
   updateProduct: (id: string, product: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -242,6 +243,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   };
 
   // Products
+  const setProductsList = (prods: Product[]) => {
+    setProducts(prods);
+  };
+
   const addProduct = (prodData: Omit<Product, "id" | "createdAt">): Product => {
     const newProduct: Product = {
       ...prodData,
@@ -629,6 +634,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         logout,
         isAuthenticated: !!currentUser && (typeof window === "undefined" || !!TokenStore.getAccess()),
         products,
+        setProductsList,
         addProduct,
         updateProduct,
         deleteProduct,
