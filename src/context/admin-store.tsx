@@ -64,6 +64,7 @@ interface AdminStoreContextType {
 
   // Orders
   orders: Order[];
+  setOrdersList: (orders: Order[]) => void;
   updateOrderStatus: (id: string, status: Order["status"]) => void;
   createPOSOrder: (orderData: {
     customerName: string;
@@ -365,6 +366,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const lowStockCount = products.filter((p) => p.stockQuantity <= p.lowStockThreshold).length;
 
   // Orders & POS Billing
+  const setOrdersList = (ords: Order[]) => {
+    setOrders(ords);
+  };
+
   const updateOrderStatus = (id: string, status: Order["status"]) => {
     const order = orders.find((o) => o.id === id);
     if (order) {
@@ -649,6 +654,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         adjustStock,
         lowStockCount,
         orders,
+        setOrdersList,
         updateOrderStatus,
         createPOSOrder,
         customers,

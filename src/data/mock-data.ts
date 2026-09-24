@@ -54,8 +54,17 @@ export interface Order {
   discountAmount: number;
   taxAmount: number;
   grandTotal: number;
-  paymentMethod: "CASH" | "UPI" | "CARD" | "ONLINE";
-  status: "PENDING" | "CONFIRMED" | "PACKING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  paymentMethod: string;
+  paymentStatus?: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "PROCESSING"
+    | "PACKED"
+    | "PACKING"
+    | "SHIPPED"
+    | "DELIVERED"
+    | "CANCELLED";
   channel: "ONLINE" | "POS";
   notes?: string;
   createdAt: string;

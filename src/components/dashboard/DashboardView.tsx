@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useAdminStore } from "@/context/admin-store";
+import { getOrders } from "@/services/order.service";
+import type { Order } from "@/data/mock-data";
 import { formatINR } from "@/lib/utils";
 import { TrendingUp, ShoppingBag, Boxes, Users, AlertTriangle } from "lucide-react";
 import { DashboardWelcomeBanner } from "./DashboardWelcomeBanner";
@@ -11,7 +13,55 @@ import { ChannelPieChart } from "./ChannelPieChart";
 import { RecentOrdersCard } from "./RecentOrdersCard";
 
 export const DashboardView: React.FC = () => {
-  const { products, orders, customers, lowStockCount } = useAdminStore();
+  const { products, orders, customers, lowStockCount, setOrdersList } = useAdminStore();
+
+  useEffect(() => {
+    let isMounted = true;
+    getOrders()
+      .then((data) => {
+        if (!isMounted || !Array.isArray(data) || data.length === 0) return;
+        const mappedForStore: Order[] = data.map((o) => ({
+          id: o._id,
+          orderNumber: o.orderNumber,
+          customerName: o.customer?.name || o.shippingAddress?.fullName || "Customer",
+          customerPhone: o.customerMobile || o.customer?.mobile || "",
+          customerEmail: o.customer?.email,
+          shippingAddress: o.shippingAddress
+            ? {
+                line1: o.shippingAddress.streetAddress || "",
+                city: o.shippingAddress.city || "",
+                pincode: o.shippingAddress.pincode || "",
+                state: o.shippingAddress.state || "",
+              }
+            : null,
+          items: (o.items || []).map((it) => ({
+            productId: it.productId,
+            productName: it.productName,
+            productPrice: it.sellingPrice,
+            quantity: it.quantity,
+            unit: "1 Pkt",
+            lineTotal: it.itemTotal,
+          })),
+          subtotal: o.subtotal,
+          discountAmount: o.totalDiscount,
+          taxAmount: 0,
+          grandTotal: o.grandTotal,
+          paymentMethod: o.paymentMethod || "MANUAL",
+          paymentStatus: o.paymentStatus,
+          status: o.orderStatus,
+          channel: (o.deliveryMethod === "POS" ? "POS" : "ONLINE") as "ONLINE" | "POS",
+          createdAt: o.createdAt,
+        }));
+        setOrdersList(mappedForStore);
+      })
+      .catch((err) => {
+        console.warn("Silent orders fetch error on dashboard:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setOrdersList]);
 
   const totalRevenue = orders.reduce(
     (sum, o) => sum + (o.status !== "CANCELLED" ? o.grandTotal : 0),
