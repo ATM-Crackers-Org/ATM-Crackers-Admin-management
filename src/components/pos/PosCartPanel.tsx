@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Product, Order } from "@/data/mock-data";
 import { formatINR } from "@/lib/utils";
 import {
@@ -40,6 +40,7 @@ interface POSCartPanelProps {
   paymentMethod: Order["paymentMethod"];
   onPaymentMethodChange: (method: Order["paymentMethod"]) => void;
   onUpdateQuantity: (productId: string, delta: number) => void;
+  onSetQuantity: (productId: string, qty: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
   onCheckout: () => void;
@@ -51,6 +52,116 @@ const PAYMENT_METHODS = [
   { method: "UPI" as const, icon: QrCode, label: "UPI" },
   { method: "CARD" as const, icon: CreditCard, label: "Card" },
 ];
+
+interface CartItemRowProps {
+  product: Product;
+  quantity: number;
+  onUpdateQuantity: (productId: string, delta: number) => void;
+  onSetQuantity: (productId: string, qty: number) => void;
+  onRemoveItem: (productId: string) => void;
+}
+
+function CartItemRow({
+  product,
+  quantity,
+  onUpdateQuantity,
+  onSetQuantity,
+  onRemoveItem,
+}: CartItemRowProps) {
+  const [localQty, setLocalQty] = useState(String(quantity));
+
+  useEffect(() => {
+    setLocalQty(String(quantity));
+  }, [quantity]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalQty(val);
+    if (val === "") return;
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num > 0) {
+      const clamped = Math.min(num, product.stockQuantity);
+      onSetQuantity(product.id, clamped);
+    }
+  };
+
+  const handleBlur = () => {
+    if (localQty === "" || isNaN(parseInt(localQty, 10)) || parseInt(localQty, 10) < 1) {
+      setLocalQty(String(quantity || 1));
+      onSetQuantity(product.id, quantity || 1);
+    } else {
+      const num = Math.min(parseInt(localQty, 10), product.stockQuantity);
+      setLocalQty(String(num));
+      onSetQuantity(product.id, num);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-slate-200 bg-white transition-colors">
+      {/* Name & Price */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
+          {product.name}
+        </p>
+        <p className="text-[10px] text-slate-400 mt-0.5">
+          {formatINR(product.price)} ×{" "}
+          <span className="font-bold text-slate-600">{quantity}</span>
+          {" = "}
+          <span className="font-bold text-slate-800">
+            {formatINR(product.price * quantity)}
+          </span>
+        </p>
+      </div>
+
+      {/* Stepper with editable input */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={() => onUpdateQuantity(product.id, -1)}
+          className="w-5 h-5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+          aria-label="Decrease quantity"
+        >
+          <Minus className="w-2.5 h-2.5" />
+        </button>
+        <input
+          type="number"
+          min={1}
+          max={product.stockQuantity}
+          value={localQty}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onFocus={(e) => e.target.select()}
+          className="w-9 h-5 text-center text-[11px] font-bold text-slate-800 border border-slate-200 rounded focus:border-red-500 focus:ring-1 focus:ring-red-400 outline-none bg-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          aria-label="Cart item quantity"
+        />
+        <button
+          type="button"
+          onClick={() => onUpdateQuantity(product.id, 1)}
+          disabled={quantity >= product.stockQuantity}
+          className="w-5 h-5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors disabled:opacity-40"
+          aria-label="Increase quantity"
+        >
+          <Plus className="w-2.5 h-2.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemoveItem(product.id)}
+          className="w-5 h-5 rounded text-slate-300 hover:text-red-500 flex items-center justify-center cursor-pointer transition-colors ml-0.5"
+          aria-label="Remove item"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function POSCartPanel({
   cart,
@@ -70,6 +181,7 @@ export function POSCartPanel({
   paymentMethod,
   onPaymentMethodChange,
   onUpdateQuantity,
+  onSetQuantity,
   onRemoveItem,
   onClearCart,
   onCheckout,
@@ -145,54 +257,15 @@ export function POSCartPanel({
           </div>
         ) : (
           <div className="p-2.5 space-y-1.5">
-            {cart.map(({ product, quantity }) => (
-              <div
-                key={product.id}
-                className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-slate-200 bg-white transition-colors"
-              >
-                {/* Name & Price */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
-                    {product.name}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {formatINR(product.price)} ×{" "}
-                    <span className="font-bold text-slate-600">{quantity}</span>
-                    {" = "}
-                    <span className="font-bold text-slate-800">
-                      {formatINR(product.price * quantity)}
-                    </span>
-                  </p>
-                </div>
-
-                {/* Stepper */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onUpdateQuantity(product.id, -1)}
-                    className="w-5 h-5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
-                  >
-                    <Minus className="w-2.5 h-2.5" />
-                  </button>
-                  <span className="text-[11px] font-bold text-slate-800 w-5 text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onUpdateQuantity(product.id, 1)}
-                    className="w-5 h-5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
-                  >
-                    <Plus className="w-2.5 h-2.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(product.id)}
-                    className="w-5 h-5 rounded text-slate-300 hover:text-red-500 flex items-center justify-center cursor-pointer transition-colors ml-0.5"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
+            {cart.map((item) => (
+              <CartItemRow
+                key={item.product.id}
+                product={item.product}
+                quantity={item.quantity}
+                onUpdateQuantity={onUpdateQuantity}
+                onSetQuantity={onSetQuantity}
+                onRemoveItem={onRemoveItem}
+              />
             ))}
           </div>
         )}

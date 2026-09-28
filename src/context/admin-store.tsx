@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import { logout as apiLogout } from "@/services/auth.service";
+import { getProducts } from "@/services/product.service";
+import { getCategories } from "@/services/category.service";
 import { TokenStore } from "@/lib/axiosInstance";
 import {
   Product,
@@ -141,20 +143,47 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
+  // Load from localStorage on mount (cleaning any legacy mock items)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.products) setProducts(parsed.products);
-        if (parsed.categories) setCategories(parsed.categories);
-        if (parsed.orders) setOrders(parsed.orders);
-        if (parsed.inventoryLogs) setInventoryLogs(parsed.inventoryLogs);
-        if (parsed.customers) setCustomers(parsed.customers);
-        if (parsed.coupons) setCoupons(parsed.coupons);
-        if (parsed.offers) setOffers(parsed.offers);
-        if (parsed.banners) setBanners(parsed.banners);
-        if (parsed.auditLogs) setAuditLogs(parsed.auditLogs);
+        if (parsed.products && Array.isArray(parsed.products)) {
+          setProducts(parsed.products.filter((p: Product) => !p.id.startsWith("prod-")));
+        }
+        if (parsed.categories && Array.isArray(parsed.categories)) {
+          setCategories(parsed.categories.filter((c: Category) => !c.id.startsWith("cat-")));
+        }
+        if (parsed.orders && Array.isArray(parsed.orders)) {
+          setOrders(parsed.orders.filter((o: Order) => !o.id.startsWith("ord-")));
+        }
+        if (parsed.inventoryLogs && Array.isArray(parsed.inventoryLogs)) {
+          setInventoryLogs(parsed.inventoryLogs.filter((l: InventoryLog) => !l.id.startsWith("log-")));
+        }
+        if (parsed.customers && Array.isArray(parsed.customers) && parsed.customers.length > 0) {
+          setCustomers(parsed.customers);
+        } else {
+          setCustomers(INITIAL_CUSTOMERS);
+        }
+        if (parsed.coupons && Array.isArray(parsed.coupons) && parsed.coupons.length > 0) {
+          setCoupons(parsed.coupons);
+        } else {
+          setCoupons(INITIAL_COUPONS);
+        }
+        if (parsed.offers && Array.isArray(parsed.offers) && parsed.offers.length > 0) {
+          setOffers(parsed.offers);
+        } else {
+          setOffers(INITIAL_OFFERS);
+        }
+        if (parsed.banners && Array.isArray(parsed.banners) && parsed.banners.length > 0) {
+          setBanners(parsed.banners);
+        } else {
+          setBanners(INITIAL_BANNERS);
+        }
+        if (parsed.auditLogs && Array.isArray(parsed.auditLogs)) {
+          setAuditLogs(parsed.auditLogs.filter((a: AuditLog) => !a.id.startsWith("aud-")));
+        }
         if (parsed.settings) setSettings(parsed.settings);
         if (parsed.currentUser !== undefined && TokenStore.getAccess()) {
           setCurrentUser(parsed.currentUser);
@@ -166,6 +195,78 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       console.warn("Failed to load state from localStorage:", e);
     }
     setIsLoaded(true);
+
+    // Asynchronously fetch live categories and products from backend API
+    async function fetchLiveCatalog() {
+      try {
+        const [catsRes, prodsRes] = await Promise.allSettled([
+          getCategories(),
+          getProducts(),
+        ]);
+
+        if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value)) {
+          const mappedCats: Category[] = catsRes.value.map((c) => ({
+            id: c._id,
+            name: c.name,
+            slug: c.slug,
+            icon: "💥",
+            imageUrl: c.imageUrl,
+            sortOrder: c.displayOrder || 0,
+            isActive: c.status === "ACTIVE",
+          }));
+          setCategories(mappedCats);
+        }
+
+        if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value)) {
+          const mappedProds: Product[] = prodsRes.value.map((p) => {
+            const catId =
+              typeof p.category === "object" && p.category
+                ? p.category._id
+                : typeof p.category === "string"
+                ? p.category
+                : "";
+            const catName =
+              typeof p.category === "object" && p.category
+                ? p.category.name
+                : "General";
+            const sellingPrice =
+              p.sellingPrice ??
+              Math.round(p.mrp * (1 - (p.discountPercent || 0) / 100));
+
+            return {
+              id: p._id || p.id || "",
+              name: p.name,
+              sku: p.slug || (p._id ? p._id.slice(-6).toUpperCase() : "CRK-001"),
+              price: sellingPrice,
+              originalPrice: p.mrp,
+              stockQuantity:
+                p.stockStatus === "out_of_stock"
+                  ? 0
+                  : p.stockStatus === "limited"
+                  ? 10
+                  : 100,
+              lowStockThreshold: 20,
+              categoryId: catId,
+              categoryName: catName,
+              unit: "1 Box",
+              description: p.description || "",
+              imageUrl:
+                Array.isArray(p.images) && p.images.length > 0
+                  ? p.images[0]
+                  : "https://placehold.co/600x600/F5A623/111827?text=ATM+Crackers",
+              isActive: p.status === "ACTIVE",
+              isFeatured: false,
+              createdAt: p.createdAt || new Date().toISOString(),
+            };
+          });
+          setProducts(mappedProds);
+        }
+      } catch (err) {
+        console.warn("Could not load initial catalog from API in store:", err);
+      }
+    }
+
+    fetchLiveCatalog();
   }, []);
 
   // Save to localStorage whenever state changes
