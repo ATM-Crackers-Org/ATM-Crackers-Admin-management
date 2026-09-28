@@ -6,28 +6,26 @@ import { Receipt } from "lucide-react";
 
 export const DashboardWelcomeBanner: React.FC = () => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-red-700 via-red-600 to-amber-600 text-white p-6 rounded-3xl shadow-lg shadow-red-900/15">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 text-white px-5 py-4 rounded-xl">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+          <span className="bg-red-600 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
             Sivakasi Direct
           </span>
-          <span className="text-xs text-red-100 font-medium">Diwali Season 2026</span>
+          <span className="text-[11px] text-slate-400">Diwali Season 2026</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold">ATM Crackers Control Center</h1>
-        <p className="text-xs sm:text-sm text-red-100 mt-1 max-w-xl">
-          Real-time administrative operations for online bookings, retail POS billing, warehouse inventory, and orders dispatch.
+        <h1 className="text-base font-semibold text-white">ATM Crackers Control Center</h1>
+        <p className="text-[12px] text-slate-400 mt-0.5 max-w-lg">
+          Online orders, POS billing, warehouse inventory, and dispatch management.
         </p>
       </div>
-      <div className="flex items-center gap-3">
-        <Link
-          href="/billing"
-          className="btn bg-white text-red-700 hover:bg-red-50 text-sm font-semibold shadow-md shrink-0 flex items-center gap-2 rounded-xl"
-        >
-          <Receipt className="w-4 h-4" />
-          <span>Launch POS Terminal</span>
-        </Link>
-      </div>
+      <Link
+        href="/billing"
+        className="btn flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 text-[12px] font-semibold shrink-0"
+      >
+        <Receipt className="w-3.5 h-3.5" />
+        Launch POS
+      </Link>
     </div>
   );
 };

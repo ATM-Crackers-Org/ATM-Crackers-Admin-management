@@ -108,19 +108,19 @@ export function OrderTable({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
+        <table className="w-full text-left text-xs text-slate-600">
+          <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
             <tr>
-              <th className="py-3.5 px-4">Order # & Date</th>
-              <th className="py-3.5 px-4">Customer Details</th>
-              <th className="py-3.5 px-4">Delivery & Mode</th>
-              <th className="py-3.5 px-4">Payment Status</th>
-              <th className="py-3.5 px-4">Items Summary</th>
-              <th className="py-3.5 px-4">Total Amount</th>
-              <th className="py-3.5 px-4">Order Status</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
+              <th className="py-2.5 px-3">Order # & Date</th>
+              <th className="py-2.5 px-3">Customer Details</th>
+              <th className="py-2.5 px-3">Delivery & Mode</th>
+              <th className="py-2.5 px-3">Payment Status</th>
+              <th className="py-2.5 px-3">Items Summary</th>
+              <th className="py-2.5 px-3">Total Amount</th>
+              <th className="py-2.5 px-3">Order Status</th>
+              <th className="py-2.5 px-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -128,13 +128,13 @@ export function OrderTable({
               // Loading Skeleton Rows
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
-                  <td className="py-4 px-4">
-                    <div className="h-4 bg-slate-200 rounded w-28 mb-1.5" />
-                    <div className="h-3 bg-slate-100 rounded w-20" />
+                  <td className="py-3 px-3">
+                    <div className="h-3.5 bg-slate-200 rounded w-24 mb-1" />
+                    <div className="h-2.5 bg-slate-100 rounded w-16" />
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="h-4 bg-slate-200 rounded w-32 mb-1.5" />
-                    <div className="h-3 bg-slate-100 rounded w-24" />
+                  <td className="py-3 px-3">
+                    <div className="h-3.5 bg-slate-200 rounded w-28 mb-1" />
+                    <div className="h-2.5 bg-slate-100 rounded w-20" />
                   </td>
                   <td className="py-4 px-4">
                     <div className="h-4 bg-slate-200 rounded w-20 mb-1.5" />
@@ -183,7 +183,7 @@ export function OrderTable({
                     onClick={() => onViewOrder(order)}
                   >
                     {/* 1. Order Number & Date */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-slate-800 font-mono text-xs group-hover:text-red-600 transition-colors">
                           {order.orderNumber}
@@ -207,7 +207,7 @@ export function OrderTable({
                     </td>
 
                     {/* 2. Customer Details */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-1 text-slate-800 font-semibold text-xs">
                         <User className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="truncate max-w-[150px]">
@@ -234,7 +234,7 @@ export function OrderTable({
                     </td>
 
                     {/* 3. Delivery & Mode */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                         {order.paymentMethod || "MANUAL"}
                       </span>
@@ -245,7 +245,7 @@ export function OrderTable({
 
                     {/* 4. Payment Status (INLINE DROPDOWN) */}
                     <td
-                      className="py-3.5 px-4"
+                      className="py-2.5 px-3"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative inline-flex items-center group/pay">
@@ -276,7 +276,7 @@ export function OrderTable({
                     </td>
 
                     {/* 5. Items Summary */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-1 text-xs text-slate-700 font-medium">
                         <Package className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>
@@ -297,7 +297,7 @@ export function OrderTable({
                     </td>
 
                     {/* 6. Total Amount */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <span className="font-bold text-slate-900 text-sm block">
                         {formatINR(order.grandTotal)}
                       </span>
@@ -314,7 +314,7 @@ export function OrderTable({
 
                     {/* 7. Order Status (INLINE DROPDOWN) */}
                     <td
-                      className="py-3.5 px-4"
+                      className="py-2.5 px-3"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative inline-flex items-center group/status">
@@ -349,7 +349,7 @@ export function OrderTable({
 
                     {/* 8. Actions Column (WITH ACTIONS DROPDOWN & QUICK BUTTONS) */}
                     <td
-                      className="py-3.5 px-4 text-right"
+                      className="py-2.5 px-3 text-right"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-end gap-1 relative">

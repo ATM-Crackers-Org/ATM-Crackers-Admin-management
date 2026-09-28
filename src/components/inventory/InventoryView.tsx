@@ -44,7 +44,7 @@ export const InventoryView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <PageHeader
         title="Inventory Management"
@@ -52,9 +52,9 @@ export const InventoryView: React.FC = () => {
         actions={
           <button
             onClick={() => handleOpenReplenish()}
-            className="btn btn-primary text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-red-600/20 flex items-center gap-2 cursor-pointer"
+            className="btn btn-primary text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Replenish Stock</span>
           </button>
         }
@@ -67,7 +67,7 @@ export const InventoryView: React.FC = () => {
       />
 
       {/* Search & Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-2.5 items-center justify-between">
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -76,14 +76,14 @@ export const InventoryView: React.FC = () => {
 
         <button
           onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-          className={`btn text-xs font-semibold px-3 py-2 rounded-xl transition-all cursor-pointer ${
+          className={`btn text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
             showLowStockOnly
-              ? "bg-red-600 text-white shadow-sm shadow-red-600/30"
+              ? "bg-red-600 text-white"
               : "btn-secondary text-slate-600"
           }`}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
-          <span>Show Low Stock Only ({lowStockCount})</span>
+          <span>Low Stock Only ({lowStockCount})</span>
         </button>
       </div>
 

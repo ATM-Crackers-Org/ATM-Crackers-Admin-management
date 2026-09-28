@@ -41,18 +41,18 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
+        <table className="w-full text-left text-xs text-slate-600">
+          <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
             <tr>
-              <th className="py-3.5 px-4">Cracker Details</th>
-              <th className="py-3.5 px-4">Category</th>
-              <th className="py-3.5 px-4">Pricing & Discount</th>
-              <th className="py-3.5 px-4">Stock Status</th>
-              <th className="py-3.5 px-4">Display Order</th>
-              <th className="py-3.5 px-4 text-center">Status</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
+              <th className="py-2.5 px-3">Cracker</th>
+              <th className="py-2.5 px-3">Category</th>
+              <th className="py-2.5 px-3">Price & Disc.</th>
+              <th className="py-2.5 px-3">Stock</th>
+              <th className="py-2.5 px-3">Order</th>
+              <th className="py-2.5 px-3 text-center">Status</th>
+              <th className="py-2.5 px-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -83,9 +83,9 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   className="hover:bg-slate-50/60 transition-colors"
                 >
                   {/* Cracker Details */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl border border-slate-200/80 overflow-hidden bg-slate-100 shrink-0 shadow-xs">
+                  <td className="py-2 px-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-md border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
                         <img
                           src={primaryImage}
                           alt={prod.name}
@@ -96,12 +96,12 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           }}
                         />
                       </div>
-                      <div className="min-w-0 max-w-xs sm:max-w-sm">
-                        <div className="font-semibold text-slate-800 leading-snug truncate">
+                      <div className="min-w-0 max-w-xs">
+                        <div className="font-semibold text-slate-800 text-xs truncate">
                           {prod.name}
                         </div>
                         {prod.slug && (
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+                          <div className="text-[10px] font-mono text-slate-400 truncate">
                             /{prod.slug}
                           </div>
                         )}
@@ -110,50 +110,50 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   </td>
 
                   {/* Category */}
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
+                  <td className="py-2 px-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
                       <Layers className="w-3 h-3 text-slate-400" />
-                      <span className="truncate max-w-[140px]">
+                      <span className="truncate max-w-[120px]">
                         {categoryName}
                       </span>
                     </span>
                   </td>
 
                   {/* Pricing */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-slate-900 text-sm">
+                  <td className="py-2 px-3">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-bold text-slate-900 text-xs">
                         {formatINR(sellingPrice)}
                       </span>
                       {isDiscounted && (
-                        <span className="text-xs text-slate-400 line-through">
+                        <span className="text-[10px] text-slate-400 line-through">
                           {formatINR(prod.mrp)}
                         </span>
                       )}
                     </div>
                     {isDiscounted && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1 py-0.2 rounded inline-block">
                         {prod.discountPercent}% OFF
                       </span>
                     )}
                   </td>
 
                   {/* Stock Status */}
-                  <td className="py-3.5 px-4">
+                  <td className="py-2 px-3">
                     {prod.stockStatus === "in_stock" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         In Stock
                       </span>
                     )}
                     {prod.stockStatus === "limited" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        Limited Stock
+                        Limited
                       </span>
                     )}
                     {prod.stockStatus === "out_of_stock" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                         Out of Stock
                       </span>
@@ -161,45 +161,45 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   </td>
 
                   {/* Display Order */}
-                  <td className="py-3.5 px-4 font-mono text-xs text-slate-500">
+                  <td className="py-2 px-3 font-mono text-[11px] text-slate-500">
                     #{prod.displayOrder ?? 0}
                   </td>
 
                   {/* Status Toggle */}
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-2 px-3 text-center">
                     <button
                       onClick={() => onToggleActive(prod)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all hover:opacity-80"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium cursor-pointer transition-all hover:opacity-80"
                       title="Click to toggle status"
                     >
                       {prod.status === "ACTIVE" ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Active
+                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold">
+                          <CheckCircle2 className="w-3 h-3" /> Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-medium">
-                          <XCircle className="w-3.5 h-3.5" /> Inactive
+                        <span className="inline-flex items-center gap-1 text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">
+                          <XCircle className="w-3 h-3" /> Inactive
                         </span>
                       )}
                     </button>
                   </td>
 
                   {/* Actions */}
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <td className="py-2 px-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => onEdit(prod)}
-                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                         title="Edit Cracker"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => onDelete(productId)}
-                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
                         title="Delete Cracker"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>

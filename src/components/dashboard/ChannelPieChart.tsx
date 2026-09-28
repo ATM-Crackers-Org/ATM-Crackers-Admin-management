@@ -24,10 +24,10 @@ export const ChannelPieChart: React.FC<ChannelPieChartProps> = ({
   ];
 
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
       <div>
-        <h3 className="text-sm font-bold text-slate-800">Sales Channel Split</h3>
-        <p className="text-xs text-slate-400 mb-2">Online store bookings vs POS billing</p>
+        <h3 className="text-xs sm:text-sm font-semibold text-slate-800">Sales Channel Split</h3>
+        <p className="text-[11px] text-slate-400 mb-2">Online store bookings vs POS billing</p>
       </div>
 
       <div className="h-48 w-full">

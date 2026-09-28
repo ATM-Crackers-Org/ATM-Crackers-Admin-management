@@ -51,18 +51,18 @@ export function ChangePasswordForm() {
     formik.touched[field] && formik.errors[field] ? formik.errors[field] : undefined;
 
   return (
-    <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
+    <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-100">
-            <ShieldCheck className="w-5 h-5" />
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-red-50 text-red-600 border border-red-100">
+            <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-slate-800">
+            <h3 className="font-semibold text-xs sm:text-sm text-slate-800">
               Change Admin Password
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400">
               Ensure your administrative account uses a strong, unique password
             </p>
           </div>
@@ -71,7 +71,7 @@ export function ChangePasswordForm() {
 
       {/* Success alert */}
       {successMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs flex items-start gap-2.5 animate-in fade-in">
+        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-emerald-900">Password Updated</p>
@@ -82,7 +82,7 @@ export function ChangePasswordForm() {
 
       {/* Server error alert */}
       {serverError && (
-        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200/80 text-red-800 text-xs flex items-start gap-2.5 animate-in fade-in">
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-900">Change Password Failed</p>
@@ -91,18 +91,18 @@ export function ChangePasswordForm() {
         </div>
       )}
 
-      <form onSubmit={formik.handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={formik.handleSubmit} noValidate className="space-y-3">
         {/* Current Password */}
         <div>
           <label
             htmlFor="currentPassword"
-            className="block text-xs font-semibold text-slate-700 mb-1.5"
+            className="block text-[11px] font-semibold text-slate-700 mb-1"
           >
             Current Password <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Lock className="w-4 h-4" />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <Lock className="w-3.5 h-3.5" />
             </div>
             <input
               id="currentPassword"
@@ -110,7 +110,7 @@ export function ChangePasswordForm() {
               autoComplete="current-password"
               placeholder="Enter your existing password"
               {...formik.getFieldProps("currentPassword")}
-              className={`w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border rounded-xl text-slate-800 text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all ${
+              className={`w-full pl-8.5 pr-8 py-1.5 bg-slate-50 border rounded-lg text-slate-800 text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-500 transition-all ${
                 getFieldError("currentPassword")
                   ? "border-red-400 bg-red-50/20"
                   : "border-slate-200"
@@ -119,10 +119,10 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowCurrentPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
               aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
             >
-              {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
           </div>
           {getFieldError("currentPassword") && (
@@ -133,18 +133,18 @@ export function ChangePasswordForm() {
         </div>
 
         {/* Grid for New Password & Confirm Password */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* New Password */}
           <div>
             <label
               htmlFor="newPassword"
-              className="block text-xs font-semibold text-slate-700 mb-1.5"
+              className="block text-[11px] font-semibold text-slate-700 mb-1"
             >
               New Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-3.5 h-3.5" />
               </div>
               <input
                 id="newPassword"
@@ -152,7 +152,7 @@ export function ChangePasswordForm() {
                 autoComplete="new-password"
                 placeholder="At least 8 characters"
                 {...formik.getFieldProps("newPassword")}
-                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border rounded-xl text-slate-800 text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all ${
+                className={`w-full pl-8.5 pr-8 py-1.5 bg-slate-50 border rounded-lg text-slate-800 text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-500 transition-all ${
                   getFieldError("newPassword")
                     ? "border-red-400 bg-red-50/20"
                     : "border-slate-200"
@@ -161,10 +161,10 @@ export function ChangePasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                 aria-label={showNewPassword ? "Hide new password" : "Show new password"}
               >
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
             {getFieldError("newPassword") ? (
@@ -172,7 +172,7 @@ export function ChangePasswordForm() {
                 {getFieldError("newPassword")}
               </p>
             ) : (
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-[10px] text-slate-400">
                 Min 8 characters, with at least 1 uppercase and 1 number.
               </p>
             )}
@@ -182,13 +182,13 @@ export function ChangePasswordForm() {
           <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-xs font-semibold text-slate-700 mb-1.5"
+              className="block text-[11px] font-semibold text-slate-700 mb-1"
             >
               Confirm New Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-3.5 h-3.5" />
               </div>
               <input
                 id="confirmPassword"
@@ -196,7 +196,7 @@ export function ChangePasswordForm() {
                 autoComplete="new-password"
                 placeholder="Re-enter new password"
                 {...formik.getFieldProps("confirmPassword")}
-                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border rounded-xl text-slate-800 text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all ${
+                className={`w-full pl-8.5 pr-8 py-1.5 bg-slate-50 border rounded-lg text-slate-800 text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-500 transition-all ${
                   getFieldError("confirmPassword")
                     ? "border-red-400 bg-red-50/20"
                     : "border-slate-200"
@@ -205,10 +205,10 @@ export function ChangePasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
             {getFieldError("confirmPassword") && (
@@ -220,7 +220,7 @@ export function ChangePasswordForm() {
         </div>
 
         {/* Submit button */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => {
@@ -229,19 +229,19 @@ export function ChangePasswordForm() {
               setSuccessMessage(null);
             }}
             disabled={formik.isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
           >
             Reset
           </button>
           <button
             type="submit"
             disabled={formik.isSubmitting || !formik.dirty}
-            className="btn btn-primary text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm shadow-red-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            className="btn btn-primary text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {formik.isSubmitting ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Updating Password...</span>
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Updating...</span>
               </>
             ) : (
               <span>Update Password</span>

@@ -35,27 +35,27 @@ export const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
   totalProductsCount,
 }) => {
   return (
-    <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {/* Search */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search name, slug, description..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
+            className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:bg-white transition-all font-medium"
           />
         </div>
 
         {/* Category Filter */}
         <div className="relative">
-          <Layers className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Layers className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select
             value={categoryFilter}
             onChange={(e) => onCategoryFilterChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none cursor-pointer"
+            className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 appearance-none cursor-pointer font-medium"
           >
             <option value="all">All Categories ({totalProductsCount})</option>
             {categories.map((c) => (
@@ -68,11 +68,11 @@ export const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
 
         {/* Status Filter */}
         <div className="relative">
-          <CheckCircle2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value as "ALL" | ProductStatus)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none cursor-pointer"
+            className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 appearance-none cursor-pointer font-medium"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active Only</option>
@@ -82,11 +82,11 @@ export const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
 
         {/* Stock Status Filter */}
         <div className="relative">
-          <PackageCheck className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <PackageCheck className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select
             value={stockStatusFilter}
             onChange={(e) => onStockStatusFilterChange(e.target.value as "ALL" | StockStatus)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none cursor-pointer"
+            className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 appearance-none cursor-pointer font-medium"
           >
             <option value="ALL">All Stock Levels</option>
             <option value="in_stock">In Stock</option>

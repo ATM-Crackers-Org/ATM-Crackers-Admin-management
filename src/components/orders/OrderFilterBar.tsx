@@ -31,18 +31,18 @@ export function OrderFilterBar({
   };
 
   return (
-    <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+    <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
       {/* Left: Search Input & Payment Filter */}
-      <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+      <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2">
         {/* Search Input */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search order number, customer name, or mobile..."
-            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition-all placeholder:text-slate-400 font-medium"
+            placeholder="Search order #, customer, or mobile..."
+            className="w-full pl-8.5 pr-8 py-1.5 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-red-500 focus:ring-1 focus:ring-red-100 outline-none transition-all placeholder:text-slate-400 font-medium"
           />
           {search && (
             <button
@@ -63,16 +63,16 @@ export function OrderFilterBar({
               onChange={(e) =>
                 onPaymentStatusChange(e.target.value as OrderPaymentStatus | "ALL")
               }
-              className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-xs font-semibold rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100/80 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none cursor-pointer transition-all"
+              className="w-full sm:w-auto appearance-none pl-2.5 pr-7 py-1.5 text-xs font-medium rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100/80 focus:bg-white focus:border-red-500 focus:ring-1 focus:ring-red-100 outline-none cursor-pointer transition-all"
             >
-              <option value="ALL">All Payment Statuses</option>
+              <option value="ALL">Payment: All</option>
               {ALL_PAYMENT_STATUSES.map((status) => (
                 <option key={status} value={status}>
                   Payment: {status}
                 </option>
               ))}
             </select>
-            <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Filter className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {hasActiveFilters && (

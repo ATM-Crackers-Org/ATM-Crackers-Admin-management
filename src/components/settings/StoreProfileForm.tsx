@@ -25,16 +25,16 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-        <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-3.5">
+        <h3 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-2">
           <Store className="w-4 h-4 text-red-600" />
           <span>Store Profile & Sivakasi Headquarters</span>
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               Store Name
             </label>
             <input
@@ -43,12 +43,12 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, storeName: e.target.value })
               }
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               Tagline
             </label>
             <input
@@ -57,36 +57,36 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, tagline: e.target.value })
               }
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               GSTIN Number
             </label>
             <input
               type="text"
               value={formData.gstin}
               onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-mono"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               Customer Support Phone
             </label>
             <input
               type="text"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               Sivakasi Street Address
             </label>
             <input
@@ -95,12 +95,12 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
               }
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
               Thermal Receipt Footer Message
             </label>
             <textarea
@@ -109,17 +109,17 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, posReceiptFooter: e.target.value })
               }
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+              className="w-full px-2.5 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
             />
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
           <button
             type="submit"
-            className="btn btn-primary text-sm font-semibold flex items-center gap-2 cursor-pointer"
+            className="btn btn-primary text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
             <span>Save Changes</span>
           </button>
         </div>

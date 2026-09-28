@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import { logout as apiLogout } from "@/services/auth.service";
 import { TokenStore } from "@/lib/axiosInstance";
@@ -243,10 +243,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // Products
-  const setProductsList = (prods: Product[]) => {
+  // Products — useCallback = stable reference, won't trigger consumers' useEffect
+  const setProductsList = useCallback((prods: Product[]) => {
     setProducts(prods);
-  };
+  }, []);
 
   const addProduct = (prodData: Omit<Product, "id" | "createdAt">): Product => {
     const newProduct: Product = {
@@ -320,9 +320,9 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     toast.success("Category updated successfully!");
   };
 
-  const setCategoriesList = (cats: Category[]) => {
+  const setCategoriesList = useCallback((cats: Category[]) => {
     setCategories(cats);
-  };
+  }, []);
 
   const deleteCategory = (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
@@ -365,10 +365,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
 
   const lowStockCount = products.filter((p) => p.stockQuantity <= p.lowStockThreshold).length;
 
-  // Orders & POS Billing
-  const setOrdersList = (ords: Order[]) => {
+  // Orders & POS Billing — stable reference prevents infinite loop in consumers
+  const setOrdersList = useCallback((ords: Order[]) => {
     setOrders(ords);
-  };
+  }, []);
 
   const updateOrderStatus = (id: string, status: Order["status"]) => {
     const order = orders.find((o) => o.id === id);

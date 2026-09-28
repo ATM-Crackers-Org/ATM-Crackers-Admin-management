@@ -48,6 +48,14 @@ export const OrdersView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<OrderPaymentStatus | "ALL">("ALL");
 
+  // Refs so loadOrders can read latest filter values without being recreated
+  const searchRef = useRef(search);
+  const statusFilterRef = useRef(statusFilter);
+  const paymentStatusFilterRef = useRef(paymentStatusFilter);
+  searchRef.current = search;
+  statusFilterRef.current = statusFilter;
+  paymentStatusFilterRef.current = paymentStatusFilter;
+
   // Modals & Selected Order
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
@@ -58,6 +66,7 @@ export const OrdersView: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState(false);
 
   // ─── Fetch Orders from Backend API ──────────────────────────────────────────
+  // STABLE callback — reads filters from refs, empty deps array = no loop
   const loadOrders = useCallback(
     async (isSilent = false) => {
       if (!isSilent) setLoading(true);
@@ -66,10 +75,10 @@ export const OrdersView: React.FC = () => {
 
       try {
         const data = await getOrders({
-          search: search.trim() || undefined,
-          orderStatus: statusFilter !== "ALL" ? (statusFilter as OrderStatus) : undefined,
+          search: searchRef.current.trim() || undefined,
+          orderStatus: statusFilterRef.current !== "ALL" ? (statusFilterRef.current as OrderStatus) : undefined,
           paymentStatus:
-            paymentStatusFilter !== "ALL" ? (paymentStatusFilter as OrderPaymentStatus) : undefined,
+            paymentStatusFilterRef.current !== "ALL" ? (paymentStatusFilterRef.current as OrderPaymentStatus) : undefined,
         });
 
         setOrders(data);
@@ -122,16 +131,21 @@ export const OrdersView: React.FC = () => {
         setRefreshing(false);
       }
     },
-    [search, statusFilter, paymentStatusFilter]
+    [] // stable — reads filters via refs above
   );
 
-  // Debounce search / filter changes
+  // Mount: initial fetch (loadOrders is stable, runs exactly once)
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  // Filter changes: debounced re-fetch (does NOT depend on loadOrders ref)
   useEffect(() => {
     const timer = setTimeout(() => {
       loadOrders();
-    }, 250);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [loadOrders]);
+  }, [search, statusFilter, paymentStatusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Quick Advance Status from Table ────────────────────────────────────────
   const handleQuickStatusChange = async (order: ApiOrder, newStatus: OrderStatus) => {
@@ -245,7 +259,7 @@ export const OrdersView: React.FC = () => {
   }, [orders]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 1. Header */}
       <PageHeader
         title="Orders Dispatch & Management"
@@ -267,56 +281,56 @@ export const OrdersView: React.FC = () => {
       />
 
       {/* 2. Top Metric KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Orders */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <ShoppingBag className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <ShoppingBag className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
               Orders Count
             </span>
-            <span className="text-xl font-black text-slate-900">{metrics.totalCount}</span>
+            <span className="text-lg font-bold text-slate-900">{metrics.totalCount}</span>
           </div>
         </div>
 
         {/* Pending Orders */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
               Pending Orders
             </span>
-            <span className="text-xl font-black text-amber-600">{metrics.pendingCount}</span>
+            <span className="text-lg font-bold text-amber-600">{metrics.pendingCount}</span>
           </div>
         </div>
 
         {/* Delivered Orders */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-              Fulfilled / Delivered
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+              Fulfilled
             </span>
-            <span className="text-xl font-black text-emerald-600">{metrics.deliveredCount}</span>
+            <span className="text-lg font-bold text-emerald-600">{metrics.deliveredCount}</span>
           </div>
         </div>
 
         {/* Active Order Value */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <DollarSign className="w-5 h-5" />
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <DollarSign className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
               Orders Volume
             </span>
-            <span className="text-xl font-black text-slate-900">
+            <span className="text-lg font-bold text-slate-900">
               {formatINR(metrics.totalAmount)}
             </span>
           </div>
@@ -325,7 +339,7 @@ export const OrdersView: React.FC = () => {
 
       {/* 3. Error Banner (if any) */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start justify-between gap-3 text-rose-800 text-xs">
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start justify-between gap-3 text-rose-800 text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAdminStore } from "@/context/admin-store";
 import { Product, Order } from "@/data/mock-data";
 import { POSCatalogGrid } from "@/components/pos/PosCatalogGrid";
@@ -8,26 +8,71 @@ import { POSCartPanel, BillCartItem } from "@/components/pos/PosCartPanel";
 import { POSMobileCartBar } from "@/components/pos/PosMobileCartBar";
 import { POSReceiptModal } from "@/components/pos/PosReceiptModal";
 
+const POS_CART_KEY = "atm_pos_cart_draft";
+
+// Persist only product IDs + quantities (not full objects — products come from store)
+interface PersistedCartItem {
+  productId: string;
+  quantity: number;
+}
+
 export const PosBillingView: React.FC = () => {
   const { products, categories, createPOSOrder, validateCoupon, settings } = useAdminStore();
 
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("all");
   const [cart, setCart] = useState<BillCartItem[]>([]);
+  const [cartRestored, setCartRestored] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<Order["paymentMethod"]>("CASH");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
-
-  // Mobile View Switcher ("catalog" | "cart")
   const [mobileTab, setMobileTab] = useState<"catalog" | "cart">("catalog");
-
-  // Receipt Modal State
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
-  // Filter Catalog
+  // ── Restore cart from localStorage once products are loaded ──────────────
+  useEffect(() => {
+    if (cartRestored || products.length === 0) return;
+    try {
+      const saved = localStorage.getItem(POS_CART_KEY);
+      if (saved) {
+        const persisted: PersistedCartItem[] = JSON.parse(saved);
+        const restored: BillCartItem[] = [];
+        for (const { productId, quantity } of persisted) {
+          const prod = products.find((p) => p.id === productId);
+          if (prod && prod.isActive && prod.stockQuantity > 0) {
+            restored.push({ product: prod, quantity: Math.min(quantity, prod.stockQuantity) });
+          }
+        }
+        if (restored.length > 0) setCart(restored);
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+    setCartRestored(true);
+  }, [products, cartRestored]);
+
+  // ── Persist cart to localStorage on every change ─────────────────────────
+  useEffect(() => {
+    if (!cartRestored) return; // don't overwrite before restore
+    try {
+      const toSave: PersistedCartItem[] = cart.map(({ product, quantity }) => ({
+        productId: product.id,
+        quantity,
+      }));
+      if (toSave.length > 0) {
+        localStorage.setItem(POS_CART_KEY, JSON.stringify(toSave));
+      } else {
+        localStorage.removeItem(POS_CART_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [cart, cartRestored]);
+
+  // ── Filter Catalog ────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,65 +82,60 @@ export const PosBillingView: React.FC = () => {
     return matchesSearch && matchesCat && p.isActive;
   });
 
-  // Cart Operations
-  const addToCart = (product: Product) => {
+  // ── Cart Map (productId → quantity) for O(1) lookup in product card ──────
+  const cartMap = Object.fromEntries(cart.map(({ product, quantity }) => [product.id, quantity]));
+
+  // ── Cart Operations ───────────────────────────────────────────────────────
+  const addToCart = useCallback((product: Product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stockQuantity) {
-          alert("Maximum available stock reached for this cracker!");
-          return prev;
-        }
+        if (existing.quantity >= product.stockQuantity) return prev;
         return prev.map((item) =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
-        if (product.stockQuantity <= 0) {
-          alert("Product is out of stock!");
-          return prev;
-        }
+        if (product.stockQuantity <= 0) return prev;
         return [...prev, { product, quantity: 1 }];
       }
     });
-  };
+  }, []);
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = useCallback((productId: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) => {
           if (item.product.id === productId) {
             const nextQty = item.quantity + delta;
-            if (nextQty > item.product.stockQuantity) {
-              alert("Cannot exceed available warehouse stock!");
-              return item;
-            }
+            if (nextQty > item.product.stockQuantity) return item;
             return { ...item, quantity: nextQty };
           }
           return item;
         })
         .filter((item) => item.quantity > 0)
     );
-  };
+  }, []);
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = useCallback((productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
     setAppliedCoupon(null);
     setCouponDiscount(0);
     setCouponCode("");
-  };
+    localStorage.removeItem(POS_CART_KEY);
+  }, []);
 
-  // Calculations
+  // ── Calculations ──────────────────────────────────────────────────────────
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const grandTotal = Math.max(0, subtotal - couponDiscount);
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Apply Coupon
+  // ── Coupon ────────────────────────────────────────────────────────────────
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponCode) return;
@@ -108,13 +148,9 @@ export const PosBillingView: React.FC = () => {
     }
   };
 
-  // Complete POS Sale
+  // ── Checkout ──────────────────────────────────────────────────────────────
   const handleCheckout = () => {
-    if (cart.length === 0) {
-      alert("Cart is empty! Please add crackers before checkout.");
-      return;
-    }
-
+    if (cart.length === 0) return;
     const orderItems = cart.map((item) => ({
       productId: item.product.id,
       productName: item.product.name,
@@ -123,7 +159,6 @@ export const PosBillingView: React.FC = () => {
       unit: item.product.unit,
       lineTotal: item.product.price * item.quantity,
     }));
-
     const order = createPOSOrder({
       customerName: customerName.trim() || "Walk-in Customer",
       customerPhone: customerPhone.trim() || "-",
@@ -134,7 +169,6 @@ export const PosBillingView: React.FC = () => {
       paymentMethod,
       notes: `POS counter checkout via ${paymentMethod}`,
     });
-
     setCompletedOrder(order);
     clearCart();
     setCustomerName("");
@@ -143,41 +177,38 @@ export const PosBillingView: React.FC = () => {
   };
 
   return (
-    <div className="h-auto lg:h-[calc(100vh-6.5rem)] flex flex-col gap-4 relative">
-      {/* Mobile Top View Switcher */}
-      <div className="lg:hidden flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-xs">
+    <div className="flex flex-col gap-3" style={{ height: "calc(100vh - 6rem)" }}>
+      {/* Mobile Tab Switcher */}
+      <div className="lg:hidden flex items-center bg-white p-1 rounded-xl border border-slate-200 shrink-0">
         <button
           type="button"
           onClick={() => setMobileTab("catalog")}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            mobileTab === "catalog"
-              ? "bg-red-600 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-50"
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            mobileTab === "catalog" ? "bg-red-600 text-white" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
-          Crackers Catalog ({filteredProducts.length})
+          Catalog ({filteredProducts.length})
         </button>
         <button
           type="button"
           onClick={() => setMobileTab("cart")}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            mobileTab === "cart"
-              ? "bg-slate-900 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-50"
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === "cart" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
-          <span>Active Bill</span>
+          <span>Bill</span>
           {cart.length > 0 && (
-            <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+            <span className="bg-red-600 text-white text-[10px] px-1.5 rounded-full font-bold">
               {totalCartUnits}
             </span>
           )}
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
-        {/* Left: Product Catalog Grid */}
-        <div className={`flex-1 flex flex-col ${mobileTab === "cart" ? "hidden lg:flex" : "flex"}`}>
+      {/* Main Body */}
+      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+        {/* Left: Catalog */}
+        <div className={`flex-1 flex flex-col min-w-0 min-h-0 ${mobileTab === "cart" ? "hidden lg:flex" : "flex"}`}>
           <POSCatalogGrid
             products={filteredProducts}
             categories={categories}
@@ -186,12 +217,14 @@ export const PosBillingView: React.FC = () => {
             selectedCategory={selectedCat}
             onCategoryChange={setSelectedCat}
             onAddToCart={addToCart}
+            onUpdateQuantity={updateQuantity}
+            cartMap={cartMap}
             totalProductsCount={products.length}
           />
         </div>
 
-        {/* Right: Active Cart Panel */}
-        <div className={`w-full lg:w-96 flex flex-col ${mobileTab === "catalog" ? "hidden lg:flex" : "flex"}`}>
+        {/* Right: Cart Panel */}
+        <div className={`w-full lg:w-80 xl:w-96 shrink-0 flex flex-col min-h-0 ${mobileTab === "catalog" ? "hidden lg:flex" : "flex"}`}>
           <POSCartPanel
             cart={cart}
             totalCartUnits={totalCartUnits}
@@ -206,10 +239,7 @@ export const PosBillingView: React.FC = () => {
             onCouponCodeChange={setCouponCode}
             appliedCoupon={appliedCoupon}
             onApplyCoupon={handleApplyCoupon}
-            onRemoveCoupon={() => {
-              setAppliedCoupon(null);
-              setCouponDiscount(0);
-            }}
+            onRemoveCoupon={() => { setAppliedCoupon(null); setCouponDiscount(0); }}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             onUpdateQuantity={updateQuantity}
@@ -230,7 +260,7 @@ export const PosBillingView: React.FC = () => {
         />
       )}
 
-      {/* Printable Receipt Modal */}
+      {/* Receipt Modal */}
       <POSReceiptModal
         order={completedOrder}
         settings={settings}

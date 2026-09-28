@@ -33,13 +33,13 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data = DEFAULT_DATA 
   }, []);
 
   return (
-    <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
+    <div className="lg:col-span-2 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Weekly Revenue Inflow</h3>
-          <p className="text-xs text-slate-400">Total bookings and in-store cash flow</p>
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-800">Weekly Revenue Inflow</h3>
+          <p className="text-[11px] text-slate-400">Total bookings and in-store cash flow</p>
         </div>
-        <div className="text-xs text-slate-500 font-semibold bg-slate-100 px-2.5 py-1 rounded-lg">
+        <div className="text-[11px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded-md">
           This Week
         </div>
       </div>
