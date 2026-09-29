@@ -6,7 +6,7 @@ function get(key: string, fallback: string): string {
 export const Env = {
   API_BASE_URL: get(
     "NEXT_PUBLIC_API_BASE_URL",
-    "https://atm-crackers-backend-ne5o.onrender.com"
+    "https://atm-crackers-api.on-forge.com"
   ),
 
   API_TIMEOUT_MS: Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS ?? 15_000),
