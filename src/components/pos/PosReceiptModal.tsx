@@ -113,6 +113,9 @@ export function POSReceiptModal({ order, settings, onClose }: POSReceiptModalPro
                   CUSTOMER: {order.customerName}{" "}
                   {order.customerPhone !== "-" && `(${order.customerPhone})`}
                 </div>
+                {order.shippingAddress?.line1 && (
+                  <div>ADDRESS: {order.shippingAddress.line1}</div>
+                )}
               </div>
 
               {/* Items List */}
@@ -205,6 +208,9 @@ export function POSReceiptModal({ order, settings, onClose }: POSReceiptModalPro
                 </span>
                 <p className="font-bold text-sm text-slate-900 mt-0.5">{order.customerName}</p>
                 <p className="text-xs text-slate-600">Phone: {order.customerPhone}</p>
+                {order.shippingAddress?.line1 && (
+                  <p className="text-xs text-slate-600">Address: {order.shippingAddress.line1}</p>
+                )}
               </div>
 
               <table className="w-full text-left text-xs border-collapse">

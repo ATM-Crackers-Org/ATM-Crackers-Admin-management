@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAdminStore } from "@/context/admin-store";
 import { Product, Category, Order } from "@/data/mock-data";
 import { POSCatalogGrid } from "@/components/pos/PosCatalogGrid";
@@ -41,6 +41,7 @@ export const PosBillingView: React.FC = () => {
   const [cartRestored, setCartRestored] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<Order["paymentMethod"]>("CASH");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
@@ -61,15 +62,17 @@ export const PosBillingView: React.FC = () => {
           getProducts(),
         ]);
 
-        const mappedCats: Category[] = (apiCats || []).map((c: ApiCategory) => ({
-          id: c._id,
-          name: c.name,
-          slug: c.slug,
-          icon: "💥",
-          imageUrl: c.imageUrl,
-          sortOrder: c.displayOrder || 0,
-          isActive: c.status === "ACTIVE",
-        }));
+        const mappedCats: Category[] = (apiCats || [])
+          .map((c: ApiCategory) => ({
+            id: c._id,
+            name: c.name,
+            slug: c.slug,
+            icon: "💥",
+            imageUrl: c.imageUrl,
+            sortOrder: c.displayOrder || 0,
+            isActive: c.status === "ACTIVE",
+          }))
+          .sort((a, b) => a.sortOrder - b.sortOrder);
 
         const mappedProds: Product[] = (apiProds || []).map((p: ApiProduct) => {
           const catId =
@@ -82,6 +85,11 @@ export const PosBillingView: React.FC = () => {
             typeof p.category === "object" && p.category
               ? p.category.name
               : "General";
+          const catOrder =
+            typeof p.category === "object" && p.category && typeof p.category.displayOrder === "number"
+              ? p.category.displayOrder
+              : 9999;
+          const prodOrder = typeof p.displayOrder === "number" ? p.displayOrder : 9999;
 
           const sellingPrice =
             p.sellingPrice ??
@@ -102,6 +110,8 @@ export const PosBillingView: React.FC = () => {
             lowStockThreshold: 20,
             categoryId: catId,
             categoryName: catName,
+            categoryDisplayOrder: catOrder,
+            displayOrder: prodOrder,
             unit: "1 Box",
             description: p.description || "",
             imageUrl:
@@ -112,6 +122,15 @@ export const PosBillingView: React.FC = () => {
             isFeatured: false,
             createdAt: p.createdAt || new Date().toISOString(),
           };
+        });
+
+        // Sort products by category displayOrder then product displayOrder
+        mappedProds.sort((a, b) => {
+          const catDiff = (a.categoryDisplayOrder ?? 9999) - (b.categoryDisplayOrder ?? 9999);
+          if (catDiff !== 0) return catDiff;
+          const prodDiff = (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999);
+          if (prodDiff !== 0) return prodDiff;
+          return a.name.localeCompare(b.name);
         });
 
         setCategories(mappedCats);
@@ -176,15 +195,26 @@ export const PosBillingView: React.FC = () => {
     }
   }, [cart, cartRestored]);
 
-  // ── Filter Catalog ────────────────────────────────────────────────────────
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase()) ||
-      (p.nameTamil && p.nameTamil.includes(search));
-    const matchesCat = selectedCat === "all" || p.categoryId === selectedCat;
-    return matchesSearch && matchesCat && p.isActive;
-  });
+  // ── Filter Catalog (Sorted by Category displayOrder) ────────────────────
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter((p) => {
+        const matchesSearch =
+          !search.trim() ||
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.sku.toLowerCase().includes(search.toLowerCase()) ||
+          (p.nameTamil && p.nameTamil.includes(search));
+        const matchesCat = selectedCat === "all" || p.categoryId === selectedCat;
+        return matchesSearch && matchesCat && p.isActive;
+      })
+      .sort((a, b) => {
+        const catDiff = (a.categoryDisplayOrder ?? 9999) - (b.categoryDisplayOrder ?? 9999);
+        if (catDiff !== 0) return catDiff;
+        const prodDiff = (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999);
+        if (prodDiff !== 0) return prodDiff;
+        return a.name.localeCompare(b.name);
+      });
+  }, [products, search, selectedCat]);
 
   // ── Cart Map (productId → quantity) for O(1) lookup in product card ──────
   const cartMap = Object.fromEntries(cart.map(({ product, quantity }) => [product.id, quantity]));
@@ -292,17 +322,19 @@ export const PosBillingView: React.FC = () => {
     const order = createPOSOrder({
       customerName: customerName.trim() || "Walk-in Customer",
       customerPhone: customerPhone.trim() || "-",
+      customerAddress: customerAddress.trim() || undefined,
       items: orderItems,
       subtotal,
       discountAmount: couponDiscount,
       grandTotal,
-      paymentMethod,
-      notes: `POS counter checkout via ${paymentMethod}`,
+      paymentMethod: "CASH",
+      notes: customerAddress.trim() ? `Address: ${customerAddress.trim()}` : "In-store POS counter transaction",
     });
     setCompletedOrder(order);
     clearCart();
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerAddress("");
     setMobileTab("catalog");
   };
 
@@ -401,13 +433,13 @@ export const PosBillingView: React.FC = () => {
             onCustomerNameChange={setCustomerName}
             customerPhone={customerPhone}
             onCustomerPhoneChange={setCustomerPhone}
+            customerAddress={customerAddress}
+            onCustomerAddressChange={setCustomerAddress}
             couponCode={couponCode}
             onCouponCodeChange={setCouponCode}
             appliedCoupon={appliedCoupon}
             onApplyCoupon={handleApplyCoupon}
             onRemoveCoupon={() => { setAppliedCoupon(null); setCouponDiscount(0); }}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
             onUpdateQuantity={updateQuantity}
             onSetQuantity={setQuantity}
             onRemoveItem={removeFromCart}

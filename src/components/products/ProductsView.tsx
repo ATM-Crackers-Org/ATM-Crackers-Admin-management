@@ -23,7 +23,16 @@ import type {
 } from "@/types/product.types";
 import { useAdminStore } from "@/context/admin-store";
 import type { Product } from "@/data/mock-data";
-import { Plus, RefreshCw, AlertCircle, Package } from "lucide-react";
+import {
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 
 export const ProductsView: React.FC = () => {
   const { setProductsList, categories: storeCategories } = useAdminStore();
@@ -42,6 +51,10 @@ export const ProductsView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<"ALL" | ProductStatus>("ALL");
   const [stockStatusFilter, setStockStatusFilter] = useState<"ALL" | StockStatus>("ALL");
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(25);
+
   // Modal & Action states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
@@ -53,16 +66,21 @@ export const ProductsView: React.FC = () => {
   const loadCategories = useCallback(async () => {
     try {
       const data = await getCategories();
-      const mapped = data.map((c) => ({
-        id: c._id,
-        name: c.name,
-      }));
+      const mapped = (data || [])
+        .map((c) => ({
+          id: c._id,
+          name: c.name,
+          sortOrder: c.displayOrder || 0,
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
       setCategoriesList(mapped);
     } catch {
       // Fallback to store categories if direct fetch fails
       if (storeCategories && storeCategories.length > 0) {
         setCategoriesList(
-          storeCategories.map((c) => ({ id: c.id, name: c.name }))
+          [...storeCategories]
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder }))
         );
       }
     }
@@ -79,7 +97,7 @@ export const ProductsView: React.FC = () => {
       setProducts(data);
 
       // Sync to admin-store for POS Billing and Inventory modules
-      const mappedForStore: Product[] = data.map((p) => {
+      const mappedForStore: Product[] = (data || []).map((p) => {
         const catId =
           typeof p.category === "object" && p.category
             ? p.category._id
@@ -90,6 +108,11 @@ export const ProductsView: React.FC = () => {
           typeof p.category === "object" && p.category
             ? p.category.name
             : "General";
+        const catOrder =
+          typeof p.category === "object" && p.category && typeof p.category.displayOrder === "number"
+            ? p.category.displayOrder
+            : 9999;
+        const prodOrder = typeof p.displayOrder === "number" ? p.displayOrder : 9999;
 
         const sellingPrice =
           p.sellingPrice ??
@@ -110,6 +133,8 @@ export const ProductsView: React.FC = () => {
           lowStockThreshold: 20,
           categoryId: catId,
           categoryName: catName,
+          categoryDisplayOrder: catOrder,
+          displayOrder: prodOrder,
           unit: "1 Box",
           description: p.description || "",
           imageUrl:
@@ -120,6 +145,15 @@ export const ProductsView: React.FC = () => {
           isFeatured: false,
           createdAt: p.createdAt || new Date().toISOString(),
         };
+      });
+
+      // Sort store products by category displayOrder, then product displayOrder
+      mappedForStore.sort((a, b) => {
+        const catDiff = (a.categoryDisplayOrder ?? 9999) - (b.categoryDisplayOrder ?? 9999);
+        if (catDiff !== 0) return catDiff;
+        const prodDiff = (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999);
+        if (prodDiff !== 0) return prodDiff;
+        return a.name.localeCompare(b.name);
       });
 
       if (syncStoreRef.current) {
@@ -218,9 +252,14 @@ export const ProductsView: React.FC = () => {
     }
   };
 
-  // ─── Client Filter ──────────────────────────────────────────────────────────
-  const filteredProducts = useMemo(() => {
-    return products.filter((prod) => {
+  // Reset pagination on filter/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, statusFilter, stockStatusFilter]);
+
+  // ─── Client Filter & Category displayOrder Sorting ──────────────────────────
+  const sortedAndFilteredProducts = useMemo(() => {
+    const list = products.filter((prod) => {
       // Search
       const q = search.toLowerCase().trim();
       const matchesSearch =
@@ -254,7 +293,54 @@ export const ProductsView: React.FC = () => {
         matchesStockStatus
       );
     });
+
+    // Sort by Category displayOrder, then Product displayOrder, then name
+    return list.sort((a, b) => {
+      const catOrderA =
+        typeof a.category === "object" && a.category && typeof a.category.displayOrder === "number"
+          ? a.category.displayOrder
+          : 9999;
+      const catOrderB =
+        typeof b.category === "object" && b.category && typeof b.category.displayOrder === "number"
+          ? b.category.displayOrder
+          : 9999;
+
+      if (catOrderA !== catOrderB) {
+        return catOrderA - catOrderB;
+      }
+
+      const prodOrderA = typeof a.displayOrder === "number" ? a.displayOrder : 9999;
+      const prodOrderB = typeof b.displayOrder === "number" ? b.displayOrder : 9999;
+      if (prodOrderA !== prodOrderB) {
+        return prodOrderA - prodOrderB;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
   }, [products, search, categoryFilter, statusFilter, stockStatusFilter]);
+
+  // ─── Pagination Calculations ───────────────────────────────────────────────
+  const totalCount = sortedAndFilteredProducts.length;
+  const numericPageSize = pageSize === "all" ? totalCount : pageSize;
+  const totalPages =
+    pageSize === "all"
+      ? 1
+      : Math.max(1, Math.ceil(totalCount / (numericPageSize || 1)));
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex =
+    pageSize === "all" ? 0 : (activePage - 1) * (numericPageSize || 1);
+  const endIndex =
+    pageSize === "all"
+      ? totalCount
+      : Math.min(startIndex + (numericPageSize || 1), totalCount);
+
+  const paginatedProducts = useMemo(() => {
+    return sortedAndFilteredProducts.slice(startIndex, endIndex);
+  }, [sortedAndFilteredProducts, startIndex, endIndex]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(Math.max(1, Math.min(newPage, totalPages)));
+  };
 
   return (
     <div className="space-y-4">
@@ -335,12 +421,131 @@ export const ProductsView: React.FC = () => {
           ))}
         </div>
       ) : (
-        <ProductTable
-          products={filteredProducts}
-          onToggleActive={handleToggleActive}
-          onEdit={handleOpenEdit}
-          onDelete={(id) => setDeleteTargetId(id)}
-        />
+        <>
+          <ProductTable
+            products={paginatedProducts}
+            onToggleActive={handleToggleActive}
+            onEdit={handleOpenEdit}
+            onDelete={(id) => setDeleteTargetId(id)}
+          />
+
+          {/* Pagination Controls */}
+          {totalCount > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 px-3 sm:px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+              {/* Summary and Page Size */}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                <span>
+                  Showing{" "}
+                  <span className="font-bold text-slate-900">
+                    {totalCount === 0 ? 0 : startIndex + 1}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-bold text-slate-900">{endIndex}</span> of{" "}
+                  <span className="font-bold text-slate-900">{totalCount}</span> crackers
+                </span>
+                <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                  <span className="text-slate-500">Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const val =
+                        e.target.value === "all"
+                          ? "all"
+                          : Number(e.target.value);
+                      setPageSize(val);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-lg px-2 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-red-500 cursor-pointer"
+                  >
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value="all">All ({totalCount})</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Page Number Controls */}
+              {pageSize !== "all" && totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(1)}
+                    disabled={activePage === 1}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="First Page"
+                  >
+                    <ChevronsLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(activePage - 1)}
+                    disabled={activePage === 1}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= activePage - 2 && page <= activePage + 2)
+                        );
+                      })
+                      .map((page, index, array) => {
+                        const prev = array[index - 1];
+                        const hasGap = prev && page - prev > 1;
+                        return (
+                          <React.Fragment key={page}>
+                            {hasGap && (
+                              <span className="px-1 text-slate-400 text-xs select-none">
+                                ...
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handlePageChange(page)}
+                              className={`min-w-[28px] h-7 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                activePage === page
+                                  ? "bg-red-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(activePage + 1)}
+                    disabled={activePage === totalPages}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Next Page"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={activePage === totalPages}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Last Page"
+                  >
+                    <ChevronsRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Add / Edit Modal */}

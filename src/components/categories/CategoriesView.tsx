@@ -25,6 +25,7 @@ import {
   Layers,
   AlertCircle,
   FolderOpen,
+  X,
 } from "lucide-react";
 
 export const CategoriesView: React.FC = () => {
@@ -216,8 +217,19 @@ export const CategoriesView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search categories by name or slug..."
-            className="w-full pl-8.5 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-500 transition-all font-medium"
+            className="w-full pl-8.5 pr-8 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-500 transition-all font-medium"
           />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : null}
         </div>
 
         {/* Status Tabs */}

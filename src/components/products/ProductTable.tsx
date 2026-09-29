@@ -111,9 +111,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
                   {/* Category */}
                   <td className="py-2 px-3">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
-                      <Layers className="w-3 h-3 text-slate-400" />
-                      <span className="truncate max-w-[120px]">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
+                      <Layers className="w-3 h-3 text-slate-400 shrink-0" />
+                      {typeof prod.category === "object" && typeof prod.category?.displayOrder === "number" && (
+                        <span className="text-[9px] font-black px-1.5 py-0.2 bg-red-100 text-red-700 rounded-sm shrink-0">
+                          #{prod.category.displayOrder}
+                        </span>
+                      )}
+                      <span className="truncate max-w-[140px]" title={categoryName}>
                         {categoryName}
                       </span>
                     </span>

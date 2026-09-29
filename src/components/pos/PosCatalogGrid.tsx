@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Product, Category } from "@/data/mock-data";
 import { POSProductCard } from "./PosProductCard";
-import { Search, LayoutGrid, RefreshCw } from "lucide-react";
+import { Search, LayoutGrid, RefreshCw, X } from "lucide-react";
 
 interface POSCatalogGridProps {
   products: Product[];
@@ -36,11 +36,10 @@ export function POSCatalogGrid({
   onRefresh,
   isRefreshing,
 }: POSCatalogGridProps) {
-  const PAGE_SIZE = 16;
+  const PAGE_SIZE = 36;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset to initial 16 whenever category filter or search query changes
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     if (scrollContainerRef.current) {
@@ -62,17 +61,27 @@ export function POSCatalogGrid({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white rounded-xl border border-slate-200 overflow-hidden">
-      {/* Top Search Bar with Refresh */}
       <div className="px-3 py-2.5 border-b border-slate-100 shrink-0 flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search crackers by name or SKU..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
+            className="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
           />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          ) : null}
         </div>
         {onRefresh && (
           <button
@@ -87,28 +96,23 @@ export function POSCatalogGrid({
         )}
       </div>
 
-      {/* Body: Category Sidebar + Product Grid */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Left: Vertical Category Sidebar */}
         <div className="w-24 shrink-0 border-r border-slate-100 overflow-y-auto flex flex-col bg-slate-50/50">
-          {/* All Items */}
           <button
             type="button"
             onClick={() => onCategoryChange("all")}
-            className={`w-full flex flex-col items-center gap-1.5 py-3 px-1 text-center transition-colors border-b border-slate-100 cursor-pointer ${
-              selectedCategory === "all"
-                ? "bg-red-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
+            className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 text-center transition-colors border-b border-slate-100 cursor-pointer ${selectedCategory === "all"
+              ? "bg-red-600 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
           >
             <LayoutGrid className="w-4 h-4 shrink-0" />
             <span className="text-[10px] font-bold uppercase leading-tight">All</span>
             <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                selectedCategory === "all"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-200 text-slate-600"
-              }`}
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${selectedCategory === "all"
+                ? "bg-white/20 text-white"
+                : "bg-slate-200 text-slate-600"
+                }`}
             >
               {totalProductsCount}
             </span>
@@ -127,29 +131,28 @@ export function POSCatalogGrid({
                 key={c.id}
                 type="button"
                 onClick={() => onCategoryChange(c.id)}
-                className={`w-full flex flex-col items-center gap-1.5 py-2.5 px-1.5 text-center transition-colors border-b border-slate-100 cursor-pointer ${
-                  isActive
-                    ? "bg-red-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded flex items-center justify-center text-xs shrink-0 ${
-                    isActive ? "bg-white/20" : "bg-slate-200/80"
+                className={`w-full flex flex-col items-center gap-1 py-4 px-2 text-center transition-colors border-b border-slate-100 cursor-pointer ${isActive
+                  ? "bg-red-600 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
                   }`}
+              >
+                {/* <div
+                  className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black shrink-0 ${
+                    isActive ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-700"
+                  }`}
+                  title={`Order: ${c.sortOrder || 0}`}
                 >
-                  {c.icon || "💥"}
-                </div>
+                  #{c.sortOrder || 0}
+                </div> */}
                 <span className="text-[9px] font-bold uppercase leading-tight line-clamp-2">
                   {c.name}
                 </span>
                 {count > 0 && (
                   <span
-                    className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
+                    className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full ${isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-200 text-slate-600"
+                      }`}
                   >
                     {count}
                   </span>
@@ -159,7 +162,7 @@ export function POSCatalogGrid({
           })}
         </div>
 
-        {/* Right: Product Grid with Infinite Scroll & Load More */}
+        {/* Right: Product Grid with Category Section Headers & Infinite Scroll */}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
@@ -173,16 +176,50 @@ export function POSCatalogGrid({
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
-                {visibleProducts.map((prod) => (
-                  <POSProductCard
-                    key={prod.id}
-                    product={prod}
-                    onAddToCart={onAddToCart}
-                    onUpdateQuantity={onUpdateQuantity}
-                    onSetQuantity={onSetQuantity}
-                    cartQuantity={cartMap[prod.id] ?? 0}
-                  />
-                ))}
+                {visibleProducts.map((prod, index) => {
+                  const prevProd = visibleProducts[index - 1];
+                  const isNewCategory =
+                    !prevProd ||
+                    prevProd.categoryId !== prod.categoryId ||
+                    prevProd.categoryName?.trim().toLowerCase() !==
+                    prod.categoryName?.trim().toLowerCase();
+
+                  const catOrder = prod.categoryDisplayOrder ?? 9999;
+                  const catCount = products.filter(
+                    (p) =>
+                      p.categoryId === prod.categoryId ||
+                      p.categoryName?.trim().toLowerCase() ===
+                      prod.categoryName?.trim().toLowerCase()
+                  ).length;
+
+                  return (
+                    <React.Fragment key={prod.id}>
+                      {isNewCategory && (
+                        <div className="col-span-full pt-3 pb-1 first:pt-0">
+                          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-red-600/10 via-amber-500/10 to-transparent border border-red-500/20 backdrop-blur-xs">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-red-600 text-white text-[10px] font-black shadow-xs shrink-0">
+                              #{catOrder !== 9999 ? catOrder : "•"}
+                            </span>
+                            <h3 className="text-xs font-black text-slate-800 tracking-wide uppercase">
+                              {prod.categoryName || "General"}
+                            </h3>
+                            <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                              {catCount} {catCount === 1 ? "item" : "items"}
+                            </span>
+                            <div className="flex-1 h-px bg-linear-to-r from-red-300/60 via-slate-200 to-transparent ml-1" />
+                          </div>
+                        </div>
+                      )}
+                      <POSProductCard
+                        product={prod}
+                        onAddToCart={onAddToCart}
+                        onUpdateQuantity={onUpdateQuantity}
+                        onSetQuantity={onSetQuantity}
+                        cartQuantity={cartMap[prod.id] ?? 0}
+                      />
+                    </React.Fragment>
+                  );
+                })}
               </div>
 
               {/* Load More & Infinite Scroll Indicator */}

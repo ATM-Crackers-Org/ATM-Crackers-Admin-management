@@ -50,7 +50,7 @@ export function LoginForm() {
       <div className="mb-5 pb-4 border-b border-slate-800/80 flex items-center justify-between">
         <div>
           <h2 className="text-sm sm:text-base font-bold text-white">
-            Super Admin Login
+            Admin Login
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
             Enter your administrative credentials to continue
@@ -149,7 +149,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={formik.isSubmitting}
-          className="w-full h-11 sm:h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+          className="w-full h-11 sm:h-12 rounded-xl bg-linear-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
         >
           {formik.isSubmitting ? (
             <>

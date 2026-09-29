@@ -9,6 +9,8 @@ export interface Product {
   lowStockThreshold: number;
   categoryId: string;
   categoryName: string;
+  categoryDisplayOrder?: number;
+  displayOrder?: number;
   unit: string;
   description: string;
   imageUrl: string;

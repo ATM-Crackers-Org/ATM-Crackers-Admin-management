@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Filter, Layers, CheckCircle2, PackageCheck } from "lucide-react";
+import { Search, Filter, Layers, CheckCircle2, PackageCheck, X } from "lucide-react";
 import type { ProductStatus, StockStatus } from "@/types/product.types";
 
 interface CategoryOption {
@@ -39,14 +39,25 @@ export const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {/* Search */}
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search name, slug, description..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:bg-white transition-all font-medium"
+            className="w-full pl-8.5 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:bg-white transition-all font-medium"
           />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          ) : null}
         </div>
 
         {/* Category Filter */}

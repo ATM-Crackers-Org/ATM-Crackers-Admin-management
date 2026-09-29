@@ -10,9 +10,6 @@ import {
   Trash2,
   ShoppingCart,
   CheckCircle2,
-  Banknote,
-  QrCode,
-  CreditCard,
   Tag,
   X,
 } from "lucide-react";
@@ -32,13 +29,13 @@ interface POSCartPanelProps {
   onCustomerNameChange: (val: string) => void;
   customerPhone: string;
   onCustomerPhoneChange: (val: string) => void;
+  customerAddress: string;
+  onCustomerAddressChange: (val: string) => void;
   couponCode: string;
   onCouponCodeChange: (val: string) => void;
   appliedCoupon: any | null;
   onApplyCoupon: (e: React.FormEvent) => void;
   onRemoveCoupon: () => void;
-  paymentMethod: Order["paymentMethod"];
-  onPaymentMethodChange: (method: Order["paymentMethod"]) => void;
   onUpdateQuantity: (productId: string, delta: number) => void;
   onSetQuantity: (productId: string, qty: number) => void;
   onRemoveItem: (productId: string) => void;
@@ -46,12 +43,6 @@ interface POSCartPanelProps {
   onCheckout: () => void;
   onBackToCatalog?: () => void;
 }
-
-const PAYMENT_METHODS = [
-  { method: "CASH" as const, icon: Banknote, label: "Cash" },
-  { method: "UPI" as const, icon: QrCode, label: "UPI" },
-  { method: "CARD" as const, icon: CreditCard, label: "Card" },
-];
 
 interface CartItemRowProps {
   product: Product;
@@ -173,13 +164,13 @@ export function POSCartPanel({
   onCustomerNameChange,
   customerPhone,
   onCustomerPhoneChange,
+  customerAddress,
+  onCustomerAddressChange,
   couponCode,
   onCouponCodeChange,
   appliedCoupon,
   onApplyCoupon,
   onRemoveCoupon,
-  paymentMethod,
-  onPaymentMethodChange,
   onUpdateQuantity,
   onSetQuantity,
   onRemoveItem,
@@ -224,19 +215,28 @@ export function POSCartPanel({
       </div>
 
       {/* ── Customer Info ───────────────────────── */}
-      <div className="px-3 py-2.5 border-b border-slate-100 grid grid-cols-2 gap-2 shrink-0 bg-slate-50/40">
+      <div className="px-3 py-2.5 border-b border-slate-100 flex flex-col gap-2 shrink-0 bg-slate-50/40">
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="text"
+            placeholder="Customer name"
+            value={customerName}
+            onChange={(e) => onCustomerNameChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
+          />
+          <input
+            type="tel"
+            placeholder="Phone number"
+            value={customerPhone}
+            onChange={(e) => onCustomerPhoneChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
+          />
+        </div>
         <input
           type="text"
-          placeholder="Customer name"
-          value={customerName}
-          onChange={(e) => onCustomerNameChange(e.target.value)}
-          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
-        />
-        <input
-          type="tel"
-          placeholder="Phone number"
-          value={customerPhone}
-          onChange={(e) => onCustomerPhoneChange(e.target.value)}
+          placeholder="Address / Town"
+          value={customerAddress}
+          onChange={(e) => onCustomerAddressChange(e.target.value)}
           className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
         />
       </div>
@@ -308,27 +308,6 @@ export function POSCartPanel({
           )}
         </div>
 
-        {/* Payment Method */}
-        <div className="px-3 py-2 border-b border-slate-100">
-          <p className="text-[10px] text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Payment</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {PAYMENT_METHODS.map(({ method, icon: Icon, label }) => (
-              <button
-                key={method}
-                type="button"
-                onClick={() => onPaymentMethodChange(method)}
-                className={`py-2 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  paymentMethod === method
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Bill Summary */}
         <div className="px-3 py-2.5 space-y-1 border-b border-slate-100">

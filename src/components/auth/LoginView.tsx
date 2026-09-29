@@ -45,7 +45,7 @@ export const LoginView: React.FC = () => {
         <LoginForm />
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          ATM Crackers © 2026 • Sivakasi, Tamil Nadu • Super Admin Security
+          ATM Crackers © 2026 • Sivakasi, Tamil Nadu • Admin Security
         </p>
       </div>
     </div>

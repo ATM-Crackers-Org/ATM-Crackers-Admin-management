@@ -71,11 +71,12 @@ interface AdminStoreContextType {
   createPOSOrder: (orderData: {
     customerName: string;
     customerPhone: string;
+    customerAddress?: string;
     items: Order["items"];
     subtotal: number;
     discountAmount: number;
     grandTotal: number;
-    paymentMethod: Order["paymentMethod"];
+    paymentMethod?: Order["paymentMethod"];
     notes?: string;
   }) => Order;
 
@@ -195,17 +196,23 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       console.warn("Failed to load state from localStorage:", e);
     }
     setIsLoaded(true);
+  }, []);
 
-    // Asynchronously fetch live categories and products from backend API
-    async function fetchLiveCatalog() {
-      try {
-        const [catsRes, prodsRes] = await Promise.allSettled([
-          getCategories(),
-          getProducts(),
-        ]);
+  // Asynchronously fetch live categories and products from backend API (authenticated only)
+  const fetchLiveCatalog = useCallback(async () => {
+    if (typeof window === "undefined" || !TokenStore.getAccess()) {
+      return;
+    }
 
-        if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value)) {
-          const mappedCats: Category[] = catsRes.value.map((c) => ({
+    try {
+      const [catsRes, prodsRes] = await Promise.allSettled([
+        getCategories(),
+        getProducts(),
+      ]);
+
+      if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value)) {
+        const mappedCats: Category[] = catsRes.value
+          .map((c) => ({
             id: c._id,
             name: c.name,
             slug: c.slug,
@@ -213,61 +220,83 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
             imageUrl: c.imageUrl,
             sortOrder: c.displayOrder || 0,
             isActive: c.status === "ACTIVE",
-          }));
-          setCategories(mappedCats);
-        }
-
-        if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value)) {
-          const mappedProds: Product[] = prodsRes.value.map((p) => {
-            const catId =
-              typeof p.category === "object" && p.category
-                ? p.category._id
-                : typeof p.category === "string"
-                ? p.category
-                : "";
-            const catName =
-              typeof p.category === "object" && p.category
-                ? p.category.name
-                : "General";
-            const sellingPrice =
-              p.sellingPrice ??
-              Math.round(p.mrp * (1 - (p.discountPercent || 0) / 100));
-
-            return {
-              id: p._id || p.id || "",
-              name: p.name,
-              sku: p.slug || (p._id ? p._id.slice(-6).toUpperCase() : "CRK-001"),
-              price: sellingPrice,
-              originalPrice: p.mrp,
-              stockQuantity:
-                p.stockStatus === "out_of_stock"
-                  ? 0
-                  : p.stockStatus === "limited"
-                  ? 10
-                  : 100,
-              lowStockThreshold: 20,
-              categoryId: catId,
-              categoryName: catName,
-              unit: "1 Box",
-              description: p.description || "",
-              imageUrl:
-                Array.isArray(p.images) && p.images.length > 0
-                  ? p.images[0]
-                  : "https://placehold.co/600x600/F5A623/111827?text=ATM+Crackers",
-              isActive: p.status === "ACTIVE",
-              isFeatured: false,
-              createdAt: p.createdAt || new Date().toISOString(),
-            };
-          });
-          setProducts(mappedProds);
-        }
-      } catch (err) {
-        console.warn("Could not load initial catalog from API in store:", err);
+          }))
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        setCategories(mappedCats);
       }
-    }
 
-    fetchLiveCatalog();
+      if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value)) {
+        const mappedProds: Product[] = prodsRes.value.map((p) => {
+          const catId =
+            typeof p.category === "object" && p.category
+              ? p.category._id
+              : typeof p.category === "string"
+              ? p.category
+              : "";
+          const catName =
+            typeof p.category === "object" && p.category
+              ? p.category.name
+              : "General";
+          const catOrder =
+            typeof p.category === "object" && p.category && typeof p.category.displayOrder === "number"
+              ? p.category.displayOrder
+              : 9999;
+          const prodOrder = typeof p.displayOrder === "number" ? p.displayOrder : 9999;
+          const sellingPrice =
+            p.sellingPrice ??
+            Math.round(p.mrp * (1 - (p.discountPercent || 0) / 100));
+
+          return {
+            id: p._id || p.id || "",
+            name: p.name,
+            sku: p.slug || (p._id ? p._id.slice(-6).toUpperCase() : "CRK-001"),
+            price: sellingPrice,
+            originalPrice: p.mrp,
+            stockQuantity:
+              p.stockStatus === "out_of_stock"
+                ? 0
+                : p.stockStatus === "limited"
+                ? 10
+                : 100,
+            lowStockThreshold: 20,
+            categoryId: catId,
+            categoryName: catName,
+            categoryDisplayOrder: catOrder,
+            displayOrder: prodOrder,
+            unit: "1 Box",
+            description: p.description || "",
+            imageUrl:
+              Array.isArray(p.images) && p.images.length > 0
+                ? p.images[0]
+                : "https://placehold.co/600x600/F5A623/111827?text=ATM+Crackers",
+            isActive: p.status === "ACTIVE",
+            isFeatured: false,
+            createdAt: p.createdAt || new Date().toISOString(),
+          };
+        });
+
+        // Sort by category.displayOrder first, then product.displayOrder
+        mappedProds.sort((a, b) => {
+          const catDiff = (a.categoryDisplayOrder ?? 9999) - (b.categoryDisplayOrder ?? 9999);
+          if (catDiff !== 0) return catDiff;
+          const prodDiff = (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999);
+          if (prodDiff !== 0) return prodDiff;
+          return a.name.localeCompare(b.name);
+        });
+
+        setProducts(mappedProds);
+      }
+    } catch (err) {
+      console.warn("Could not load initial catalog from API in store:", err);
+    }
   }, []);
+
+  // Fetch catalog on initial load only if an access token is already available
+  useEffect(() => {
+    if (isLoaded && TokenStore.getAccess()) {
+      fetchLiveCatalog();
+    }
+  }, [isLoaded, fetchLiveCatalog]);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -325,6 +354,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     setCurrentUser(user);
     logAction("USER_LOGIN", "AUTH", `User logged in: ${name} (${role})`);
     toast.success(`Welcome back, ${name}!`);
+    fetchLiveCatalog();
   };
 
   const logout = async () => {
@@ -485,11 +515,12 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const createPOSOrder = (orderData: {
     customerName: string;
     customerPhone: string;
+    customerAddress?: string;
     items: Order["items"];
     subtotal: number;
     discountAmount: number;
     grandTotal: number;
-    paymentMethod: Order["paymentMethod"];
+    paymentMethod?: Order["paymentMethod"];
     notes?: string;
   }): Order => {
     const orderNum = "POS-2026-" + Math.floor(1000 + Math.random() * 9000);
@@ -498,13 +529,20 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       orderNumber: orderNum,
       customerName: orderData.customerName || "Walk-in Customer",
       customerPhone: orderData.customerPhone || "-",
-      shippingAddress: null,
+      shippingAddress: orderData.customerAddress
+        ? {
+            line1: orderData.customerAddress,
+            city: "",
+            pincode: "",
+            state: "Tamil Nadu",
+          }
+        : null,
       items: orderData.items,
       subtotal: orderData.subtotal,
       discountAmount: orderData.discountAmount,
       taxAmount: 0,
       grandTotal: orderData.grandTotal,
-      paymentMethod: orderData.paymentMethod,
+      paymentMethod: orderData.paymentMethod || "CASH",
       status: "DELIVERED",
       channel: "POS",
       notes: orderData.notes || "In-store POS counter transaction",

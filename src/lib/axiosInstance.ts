@@ -79,6 +79,19 @@ api.interceptors.response.use(
 
     // ── 401 handling ──────────────────────────────────────────────────────────
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const requestUrl = originalRequest.url || "";
+      // If the failing request was login or refresh itself, don't trigger refresh/redirect loops
+      if (
+        requestUrl.includes("/admin/auth/login") ||
+        requestUrl.includes("/admin/auth/refresh")
+      ) {
+        const message =
+          error.response.data?.message ||
+          error.response.data?.error ||
+          "Invalid email or password.";
+        return Promise.reject(new Error(message));
+      }
+
       const refreshToken = TokenStore.getRefresh();
 
       // No refresh token → logout immediately
@@ -86,7 +99,9 @@ api.interceptors.response.use(
         TokenStore.clear();
         if (typeof window !== "undefined") {
           localStorage.removeItem("atm_crackers_admin_store_v1");
-          window.location.href = "/login";
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = "/login";
+          }
         }
         return Promise.reject(new Error("Session expired. Please log in again."));
       }
@@ -132,7 +147,9 @@ api.interceptors.response.use(
         TokenStore.clear();
         if (typeof window !== "undefined") {
           localStorage.removeItem("atm_crackers_admin_store_v1");
-          window.location.href = "/login";
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = "/login";
+          }
         }
         return Promise.reject(new Error("Session expired. Please log in again."));
       } finally {
