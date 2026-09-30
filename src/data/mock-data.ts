@@ -178,12 +178,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
   { id: "cust-6", name: "Lakshmi Narayanan", phone: "+91 94422 77881", city: "Salem", totalOrders: 1, totalSpent: 4200, isActive: false, createdAt: "2026-04-05T11:00:00.000Z" },
 ];
 
-export const INITIAL_COUPONS: Coupon[] = [
-  { id: "coup-1", code: "DIWALI500", description: "Flat ₹500 off on festive orders above ₹5000", discountType: "FLAT", discountValue: 500, minOrderValue: 5000, expiryDate: "2026-11-15", usageLimit: 1000, usageCount: 142, isActive: true },
-  { id: "coup-2", code: "EARLYBIRD10", description: "10% Early Bird festive advance booking discount", discountType: "PERCENTAGE", discountValue: 10, minOrderValue: 3000, maxDiscount: 1000, expiryDate: "2026-10-31", usageLimit: 500, usageCount: 88, isActive: true },
-  { id: "coup-3", code: "FREESHIP", description: "Free shipping voucher on orders above ₹2500", discountType: "FLAT", discountValue: 250, minOrderValue: 2500, expiryDate: "2026-12-31", usageLimit: 2000, usageCount: 420, isActive: true },
-  { id: "coup-4", code: "VIPMEGA20", description: "20% Exclusive discount for registered wholesale customers", discountType: "PERCENTAGE", discountValue: 20, minOrderValue: 15000, maxDiscount: 4000, expiryDate: "2026-11-20", usageLimit: 100, usageCount: 19, isActive: true },
-];
+// ─── Coupons are 100% API-driven (Empty initial) ───────────────────────────────
+export const INITIAL_COUPONS: Coupon[] = [];
 
 export const INITIAL_OFFERS: Offer[] = [
   {

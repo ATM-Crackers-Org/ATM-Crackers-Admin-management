@@ -28,6 +28,13 @@ export function cleanProductPayload<T extends Record<string, any>>(payload: T): 
       if (filtered.length > 0) {
         cleaned[key] = filtered;
       }
+    } else if (
+      ["stockQuantity", "lowStockThreshold", "mrp", "discountPercent", "displayOrder"].includes(key)
+    ) {
+      if (value !== undefined && value !== null && value !== "") {
+        const num = Number(value);
+        if (!isNaN(num)) cleaned[key] = num;
+      }
     } else if (value !== undefined && value !== null && value !== "") {
       cleaned[key] = value;
     }

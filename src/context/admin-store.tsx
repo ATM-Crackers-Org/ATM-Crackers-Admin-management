@@ -5,6 +5,8 @@ import { toast } from "react-toastify";
 import { logout as apiLogout } from "@/services/auth.service";
 import { getProducts } from "@/services/product.service";
 import { getCategories } from "@/services/category.service";
+import { getStoreSettings } from "@/services/settings.service";
+import { getCoupons } from "@/services/coupon.service";
 import { TokenStore } from "@/lib/axiosInstance";
 import {
   Product,
@@ -88,6 +90,7 @@ interface AdminStoreContextType {
 
   // Coupons
   coupons: Coupon[];
+  setCouponsList: (coupons: Coupon[]) => void;
   addCoupon: (coup: Omit<Coupon, "id" | "usageCount">) => void;
   updateCoupon: (id: string, coup: Partial<Coupon>) => void;
   deleteCoupon: (id: string) => void;
@@ -150,15 +153,15 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.products && Array.isArray(parsed.products)) {
-          setProducts(parsed.products.filter((p: Product) => !p.id.startsWith("prod-")));
-        }
-        if (parsed.categories && Array.isArray(parsed.categories)) {
-          setCategories(parsed.categories.filter((c: Category) => !c.id.startsWith("cat-")));
-        }
-        if (parsed.orders && Array.isArray(parsed.orders)) {
-          setOrders(parsed.orders.filter((o: Order) => !o.id.startsWith("ord-")));
-        }
+        // Modules with real backend APIs (products, categories, orders, settings, coupons) are loaded directly from API
+        // Clean any legacy cached data from localStorage
+        delete parsed.products;
+        delete parsed.categories;
+        delete parsed.orders;
+        delete parsed.settings;
+        delete parsed.coupons;
+
+        // Modules that do not have backend APIs yet:
         if (parsed.inventoryLogs && Array.isArray(parsed.inventoryLogs)) {
           setInventoryLogs(parsed.inventoryLogs.filter((l: InventoryLog) => !l.id.startsWith("log-")));
         }
@@ -166,11 +169,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
           setCustomers(parsed.customers);
         } else {
           setCustomers(INITIAL_CUSTOMERS);
-        }
-        if (parsed.coupons && Array.isArray(parsed.coupons) && parsed.coupons.length > 0) {
-          setCoupons(parsed.coupons);
-        } else {
-          setCoupons(INITIAL_COUPONS);
         }
         if (parsed.offers && Array.isArray(parsed.offers) && parsed.offers.length > 0) {
           setOffers(parsed.offers);
@@ -185,7 +183,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         if (parsed.auditLogs && Array.isArray(parsed.auditLogs)) {
           setAuditLogs(parsed.auditLogs.filter((a: AuditLog) => !a.id.startsWith("aud-")));
         }
-        if (parsed.settings) setSettings(parsed.settings);
         if (parsed.currentUser !== undefined && TokenStore.getAccess()) {
           setCurrentUser(parsed.currentUser);
         } else {
@@ -205,9 +202,11 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
-      const [catsRes, prodsRes] = await Promise.allSettled([
+      const [catsRes, prodsRes, settingsRes, couponsRes] = await Promise.allSettled([
         getCategories(),
         getProducts(),
+        getStoreSettings(),
+        getCoupons(),
       ]);
 
       if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value)) {
@@ -253,12 +252,17 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
             price: sellingPrice,
             originalPrice: p.mrp,
             stockQuantity:
-              p.stockStatus === "out_of_stock"
+              typeof p.stockQuantity === "number"
+                ? p.stockQuantity
+                : p.stockStatus === "out_of_stock"
                 ? 0
                 : p.stockStatus === "limited"
                 ? 10
                 : 100,
-            lowStockThreshold: 20,
+            lowStockThreshold:
+              typeof p.lowStockThreshold === "number"
+                ? p.lowStockThreshold
+                : 10,
             categoryId: catId,
             categoryName: catName,
             categoryDisplayOrder: catOrder,
@@ -286,6 +290,36 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
 
         setProducts(mappedProds);
       }
+
+      if (settingsRes.status === "fulfilled" && settingsRes.value) {
+        const s = settingsRes.value;
+        setSettings((prev) => ({
+          ...prev,
+          storeName: s.storeName || prev.storeName,
+          tagline: s.tagline || prev.tagline,
+          phone: s.supportPhone || prev.phone,
+          address: s.address || prev.address,
+          gstin: s.gstin || prev.gstin,
+          posReceiptFooter: s.receiptFooterMessage || prev.posReceiptFooter,
+        }));
+      }
+
+      if (couponsRes.status === "fulfilled" && Array.isArray(couponsRes.value)) {
+        const mappedCoupons: Coupon[] = couponsRes.value.map((c) => ({
+          id: c._id,
+          code: c.code,
+          description: c.description || "",
+          discountType: c.discountType === "FIXED_AMOUNT" ? "FLAT" : "PERCENTAGE",
+          discountValue: c.discountValue,
+          minOrderValue: c.minimumOrderValue || 0,
+          maxDiscount: c.maximumDiscount || undefined,
+          expiryDate: c.expiresAt ? c.expiresAt.split("T")[0] : "",
+          usageLimit: c.usageLimit || 0,
+          usageCount: c.usedCount || 0,
+          isActive: c.status === "ACTIVE",
+        }));
+        setCoupons(mappedCoupons);
+      }
     } catch (err) {
       console.warn("Could not load initial catalog from API in store:", err);
     }
@@ -299,20 +333,17 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   }, [isLoaded, fetchLiveCatalog]);
 
   // Save to localStorage whenever state changes
+  // Save to localStorage only for offline modules without backend APIs yet
   useEffect(() => {
     if (!isLoaded) return;
     try {
       const stateToSave = {
-        products,
-        categories,
-        orders,
         inventoryLogs,
         customers,
         coupons,
         offers,
         banners,
         auditLogs,
-        settings,
         currentUser,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
@@ -321,16 +352,12 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     }
   }, [
     isLoaded,
-    products,
-    categories,
-    orders,
     inventoryLogs,
     customers,
     coupons,
     offers,
     banners,
     auditLogs,
-    settings,
     currentUser,
   ]);
 
@@ -645,6 +672,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   };
 
   // Coupons
+  const setCouponsList = useCallback((list: Coupon[]) => {
+    setCoupons(list);
+  }, []);
+
   const addCoupon = (coupData: Omit<Coupon, "id" | "usageCount">) => {
     const newCoupon: Coupon = {
       ...coupData,
@@ -683,7 +714,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       return { valid: false, discount: 0, error: `Minimum order amount for this coupon is ₹${found.minOrderValue}.` };
     }
     let discount = 0;
-    if (found.discountType === "FLAT") {
+    if (found.discountType === "FLAT" || (found.discountType as string) === "FIXED_AMOUNT") {
       discount = Math.min(found.discountValue, orderTotal);
     } else {
       discount = (orderTotal * found.discountValue) / 100;
@@ -749,11 +780,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   };
 
   // Settings
-  const updateSettings = (newSettings: Partial<StoreSettings>) => {
+  const updateSettings = useCallback((newSettings: Partial<StoreSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
     logAction("SETTINGS_UPDATE", "SETTINGS", "Store configuration updated");
-    toast.success("Settings saved successfully!");
-  };
+  }, []);
 
   const resetToDefaultData = () => {
     setProducts(INITIAL_PRODUCTS);
@@ -801,6 +831,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         updateCustomer,
         toggleCustomerActive,
         coupons,
+        setCouponsList,
         addCoupon,
         updateCoupon,
         deleteCoupon,

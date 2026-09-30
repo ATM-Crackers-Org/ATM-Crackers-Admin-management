@@ -49,7 +49,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               <th className="py-2.5 px-3">Cracker</th>
               <th className="py-2.5 px-3">Category</th>
               <th className="py-2.5 px-3">Price & Disc.</th>
-              <th className="py-2.5 px-3">Stock</th>
+              <th className="py-2.5 px-3">Stock & Qty</th>
               <th className="py-2.5 px-3">Order</th>
               <th className="py-2.5 px-3 text-center">Status</th>
               <th className="py-2.5 px-3 text-right">Actions</th>
@@ -143,26 +143,44 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
 
-                  {/* Stock Status */}
+                  {/* Stock & Quantity */}
                   <td className="py-2 px-3">
-                    {prod.stockStatus === "in_stock" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        In Stock
-                      </span>
-                    )}
-                    {prod.stockStatus === "limited" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        Limited
-                      </span>
-                    )}
-                    {prod.stockStatus === "out_of_stock" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        Out of Stock
-                      </span>
-                    )}
+                    <div className="flex flex-col gap-1 items-start">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-800 text-xs">
+                          {typeof prod.stockQuantity === "number" ? prod.stockQuantity : "-"}
+                          <span className="font-normal text-[10px] text-slate-400 ml-0.5">units</span>
+                        </span>
+                        {typeof prod.lowStockThreshold === "number" &&
+                          typeof prod.stockQuantity === "number" &&
+                          prod.stockQuantity <= prod.lowStockThreshold && (
+                            <span
+                              className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1 py-0.2 rounded"
+                              title={`Low stock alert (threshold: ${prod.lowStockThreshold})`}
+                            >
+                              Low
+                            </span>
+                          )}
+                      </div>
+                      {prod.stockStatus === "in_stock" && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                          <span className="w-1.2 h-1.2 rounded-full bg-emerald-500" />
+                          In Stock
+                        </span>
+                      )}
+                      {prod.stockStatus === "limited" && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60">
+                          <span className="w-1.2 h-1.2 rounded-full bg-amber-500" />
+                          Limited
+                        </span>
+                      )}
+                      {prod.stockStatus === "out_of_stock" && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200/60">
+                          <span className="w-1.2 h-1.2 rounded-full bg-rose-500" />
+                          Out of Stock
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Display Order */}

@@ -26,6 +26,8 @@ export interface ApiProduct {
   sellingPrice?: number;
   discountPercent: number;
   stockStatus: StockStatus;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
   status: ProductStatus;
   displayOrder: number;
   images: string[];
@@ -61,6 +63,8 @@ export interface CreateProductPayload {
   mrp: number;
   discountPercent: number;
   stockStatus?: StockStatus;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
   status?: ProductStatus;
   displayOrder?: number;
 }
@@ -74,6 +78,8 @@ export interface UpdateProductPayload {
   mrp?: number;
   discountPercent?: number;
   stockStatus?: StockStatus;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
   status?: ProductStatus;
   displayOrder?: number;
 }
@@ -87,6 +93,8 @@ export interface ProductFormValues {
   mrp: number | "";
   discountPercent: number | "";
   stockStatus: StockStatus;
+  stockQuantity: number | "";
+  lowStockThreshold: number | "";
   status: ProductStatus;
   displayOrder: number | "";
 }

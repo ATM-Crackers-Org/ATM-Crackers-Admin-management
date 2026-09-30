@@ -125,12 +125,17 @@ export const ProductsView: React.FC = () => {
           price: sellingPrice,
           originalPrice: p.mrp,
           stockQuantity:
-            p.stockStatus === "out_of_stock"
+            typeof p.stockQuantity === "number"
+              ? p.stockQuantity
+              : p.stockStatus === "out_of_stock"
               ? 0
               : p.stockStatus === "limited"
               ? 10
               : 100,
-          lowStockThreshold: 20,
+          lowStockThreshold:
+            typeof p.lowStockThreshold === "number"
+              ? p.lowStockThreshold
+              : 10,
           categoryId: catId,
           categoryName: catName,
           categoryDisplayOrder: catOrder,

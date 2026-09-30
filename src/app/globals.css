@@ -146,6 +146,28 @@ input::placeholder,
 select::placeholder,
 textarea::placeholder { color: var(--text-tertiary); }
 
+/* Dark inputs override (for Login page and dark components) */
+input.dark-input,
+.login-input,
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"] {
+  color: #ffffff !important;
+  caret-color: #ef4444;
+}
+
+/* Chrome / Safari / Edge autofill styling for dark inputs */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus,
+.login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  box-shadow: 0 0 0 1000px #1e293b inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #ffffff !important;
+}
+
 /* ─── Custom Scrollbar ───────────────────────────── */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track  { background: transparent; }
