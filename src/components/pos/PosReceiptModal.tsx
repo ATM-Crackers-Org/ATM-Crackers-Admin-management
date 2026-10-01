@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Order, StoreSettings } from "@/data/mock-data";
 import { formatINR } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
 import { printBillElement } from "@/lib/print";
+import { getStoreSettings } from "@/services/settings.service";
+import type { ApiStoreSettings } from "@/types/settings.types";
 import { Printer } from "lucide-react";
 
 interface POSReceiptModalProps {
@@ -14,223 +16,178 @@ interface POSReceiptModalProps {
 }
 
 export function POSReceiptModal({ order, settings, onClose }: POSReceiptModalProps) {
-  const [printFormat, setPrintFormat] = useState<"thermal" | "a4">("thermal");
+  const [storeSettings, setStoreSettings] = useState<ApiStoreSettings | null>(null);
+
+  useEffect(() => {
+    if (order) {
+      getStoreSettings()
+        .then((data) => setStoreSettings(data))
+        .catch(() => {});
+    }
+  }, [order]);
 
   if (!order) return null;
 
   const handlePrint = () => {
     printBillElement("printable-pos-bill", {
-      isThermal: printFormat === "thermal",
-      title: `Bill-${order.orderNumber}`,
+      isThermal: false,
+      title: `Bill_${order.orderNumber}`,
     });
   };
+
+  const storeName = storeSettings?.storeName || settings.storeName || "ATM CRACKERS";
+  const tagline = storeSettings?.tagline || settings.tagline;
+  const address = storeSettings?.address || settings.address || settings.city || "";
+  const phone = storeSettings?.supportPhone || settings.phone || "";
+  const gstin = storeSettings?.gstin || settings.gstin || "";
+  const footerMessage =
+    storeSettings?.receiptFooterMessage ||
+    settings.posReceiptFooter ||
+    "Thank you for shopping with ATM Crackers! Happy and safe celebrations!";
 
   return (
     <Modal
       isOpen={!!order}
       onClose={onClose}
       title="Print Customer Bill"
-      maxWidth={printFormat === "thermal" ? "md" : "2xl"}
+      maxWidth="2xl"
     >
       <div className="space-y-4">
         {/* Print Controls (Excluded from print) */}
-        <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-          <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setPrintFormat("thermal")}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                printFormat === "thermal"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              🧾 80mm Thermal
-            </button>
-            <button
-              type="button"
-              onClick={() => setPrintFormat("a4")}
-              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                printFormat === "a4"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              📄 A4 Tax Sheet
-            </button>
+        <div className="no-print flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-xs">
+              📄 Standard Tax Invoice Receipt (Sheet)
+            </span>
           </div>
 
           <button
             type="button"
             onClick={handlePrint}
-            className="w-full sm:w-auto btn btn-primary text-xs font-bold px-4 py-2 flex items-center justify-center gap-2 shadow-md shadow-red-900/20 active:scale-95 cursor-pointer"
+            className="btn btn-primary text-xs font-bold px-5 py-2 flex items-center justify-center gap-2 shadow-sm shadow-red-600/20 active:scale-95 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>Print Bill (Sheet Only)</span>
+            <span>Print Receipt</span>
           </button>
         </div>
 
-        {/* The ONLY element that prints on the paper */}
+        {/* The ONLY element that prints on paper */}
         <div
           id="printable-pos-bill"
-          className={`printable-bill ${printFormat === "thermal" ? "thermal-mode" : "a4-mode"} bg-white p-4 sm:p-6 border border-slate-300 rounded-xl text-slate-900 shadow-sm`}
+          className="printable-bill a4-mode relative bg-white p-6 border border-slate-300 rounded-xl text-slate-900 shadow-sm overflow-hidden"
         >
-          {printFormat === "thermal" ? (
-            /* Thermal 80mm Layout */
-            <div className="text-center font-mono text-xs space-y-2 text-slate-900">
-              <div className="border-b-2 border-dashed border-slate-400 pb-2">
-                <h2 className="text-base font-black tracking-wider uppercase">
-                  {settings.storeName}
+          {/* Background Watermark Logo */}
+          <div
+            className="print-watermark absolute inset-0 flex items-center justify-center pointer-events-none opacity-5 overflow-hidden"
+            aria-hidden="true"
+          >
+            <img src="/logo.png" alt="" className="w-80 max-w-[65%] object-contain" />
+          </div>
+
+          {/* Printable Content Layer */}
+          <div className="printable-content-layer relative z-1 space-y-5 text-xs text-slate-800">
+            {/* Header - Clean Store Profile Typography */}
+            <div className="invoice-header flex justify-between items-start border-b-2 border-slate-900 pb-4">
+              <div>
+                <h2 className="text-2xl font-black text-red-600 tracking-tight uppercase">
+                  {storeName}
                 </h2>
-                <p className="text-[10px]">{settings.address}</p>
-                <p className="text-[10px]">Ph: {settings.phone}</p>
-                <p className="text-[10px] font-bold mt-0.5">GSTIN: {settings.gstin}</p>
-                <p className="text-[10px] font-semibold mt-1 bg-slate-100 py-0.5">
-                  *** RETAIL CASH MEMO ***
-                </p>
-              </div>
-
-              <div className="text-left text-[11px] space-y-0.5 border-b border-dashed border-slate-300 pb-2">
-                <div className="flex justify-between">
-                  <span>
-                    BILL NO: <strong>{order.orderNumber}</strong>
-                  </span>
-                  <span>{new Date(order.createdAt).toLocaleDateString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>
-                    TIME:{" "}
-                    {new Date(order.createdAt).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  <span>
-                    MODE: <strong>{order.paymentMethod}</strong>
-                  </span>
-                </div>
-                <div>
-                  CUSTOMER: {order.customerName}{" "}
-                  {order.customerPhone !== "-" && `(${order.customerPhone})`}
-                </div>
-                {order.shippingAddress?.line1 && (
-                  <div>ADDRESS: {order.shippingAddress.line1}</div>
+                {tagline && (
+                  <p className="text-xs font-semibold text-slate-700 mt-0.5">{tagline}</p>
                 )}
-              </div>
-
-              {/* Items List */}
-              <div className="text-[11px] border-b border-dashed border-slate-300 pb-2">
-                <div className="flex justify-between font-bold border-b border-slate-300 pb-1 mb-1">
-                  <span className="w-1/2 text-left">ITEM</span>
-                  <span className="w-1/4 text-center">QTY</span>
-                  <span className="w-1/4 text-right">AMT</span>
-                </div>
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between py-0.5 text-left">
-                    <div className="w-1/2 truncate font-medium">{item.productName}</div>
-                    <div className="w-1/4 text-center">
-                      {item.quantity} × {item.productPrice}
-                    </div>
-                    <div className="w-1/4 text-right font-bold">{formatINR(item.lineTotal)}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Totals */}
-              <div className="text-right text-xs space-y-1 pt-1">
-                <div className="flex justify-between text-[11px]">
-                  <span>Subtotal:</span>
-                  <span>{formatINR(order.subtotal)}</span>
-                </div>
-                {order.discountAmount > 0 && (
-                  <div className="flex justify-between text-[11px] text-emerald-700 font-bold">
-                    <span>Festive Discount:</span>
-                    <span>- {formatINR(order.discountAmount)}</span>
-                  </div>
+                {address && (
+                  <p className="text-xs text-slate-600 mt-1 max-w-sm leading-relaxed">{address}</p>
                 )}
-                <div className="flex justify-between text-sm font-black border-t-2 border-dashed border-slate-800 pt-1.5 text-slate-950">
-                  <span>NET AMOUNT:</span>
-                  <span>{formatINR(order.grandTotal)}</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-700">
+                  {phone && (
+                    <span>
+                      <strong className="text-slate-900">Phone:</strong> {phone}
+                    </span>
+                  )}
+                  {gstin && (
+                    <span className="font-mono">
+                      <strong className="text-slate-900">GSTIN:</strong> {gstin}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="border-t border-dashed border-slate-400 pt-3 text-center text-[10px] space-y-1">
-                <p className="font-bold">
-                  {settings.posReceiptFooter ||
-                    "Wish You A Sparkling Diwali & Prosperous Celebrations!"}
+              <div className="text-right">
+                <span className="text-xs font-bold bg-slate-900 text-white px-2.5 py-1 rounded uppercase tracking-wider inline-block">
+                  TAX INVOICE / CASH MEMO
+                </span>
+                <h3 className="text-base font-black text-slate-900 mt-2 font-mono">
+                  {order.orderNumber}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Date: {new Date(order.createdAt).toLocaleDateString("en-IN")}
                 </p>
-                <p className="text-[9px] text-slate-500">
-                  Items once sold cannot be returned • Sivakasi Crackers
+                <p className="text-xs text-slate-700 font-bold mt-1 flex items-center justify-end gap-1.5">
+                  <span>Payment: <strong className="uppercase">{order.paymentMethod}</strong></span>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-black tracking-wide ${
+                      order.paymentStatus === "PENDING"
+                        ? "bg-amber-100 text-amber-800 border border-amber-200"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    }`}
+                  >
+                    {order.paymentStatus || "PAID"}
+                  </span>
                 </p>
               </div>
             </div>
-          ) : (
-            /* A4 Standard Tax Invoice Layout */
-            <div className="space-y-6 text-xs text-slate-800">
-              <div className="flex justify-between items-start border-b pb-4">
-                <div className="flex items-start gap-3">
-                  <img
-                    src="/logo.png"
-                    alt="ATM Crackers Logo"
-                    className="h-16 w-auto object-contain shrink-0"
-                  />
-                  <div>
-                    <h2 className="text-xl font-black text-red-600 tracking-tight">
-                      {settings.storeName}
-                    </h2>
-                    <p className="text-xs text-slate-600">{settings.address}</p>
-                    <p className="text-xs text-slate-600">{settings.city} - Sivakasi Region</p>
-                    <p className="text-xs font-mono font-bold text-slate-800">
-                      GSTIN: {settings.gstin}
-                    </p>
-                    <p className="text-xs text-slate-600">Ph: {settings.phone}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold bg-slate-900 text-white px-2.5 py-1 rounded">
-                    TAX INVOICE / CASH MEMO
-                  </span>
-                  <h3 className="text-base font-black text-slate-900 mt-2">
-                    {order.orderNumber}
-                  </h3>
-                  <p className="text-xs text-slate-600">
-                    Date: {new Date(order.createdAt).toLocaleDateString("en-IN")}
-                  </p>
-                  <p className="text-xs text-slate-600 font-bold">
-                    Payment: {order.paymentMethod}
-                  </p>
-                </div>
-              </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Customer Details:
-                </span>
-                <p className="font-bold text-sm text-slate-900 mt-0.5">{order.customerName}</p>
-                <p className="text-xs text-slate-600">Phone: {order.customerPhone}</p>
-                {order.shippingAddress?.line1 && (
-                  <p className="text-xs text-slate-600">Address: {order.shippingAddress.line1}</p>
-                )}
-              </div>
+            {/* Customer Details Box */}
+            <div className="invoice-section p-3 bg-slate-50/70 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Customer Details:
+              </span>
+              <p className="font-bold text-sm text-slate-900 mt-0.5">{order.customerName}</p>
+              <p className="text-xs text-slate-600">Phone: {order.customerPhone}</p>
+              {order.shippingAddress?.line1 && (
+                <p className="text-xs text-slate-600">Address: {order.shippingAddress.line1}</p>
+              )}
+            </div>
 
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-t border-slate-300 bg-slate-100">
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Cracker Item</th>
-                    <th className="py-2 px-3 text-right">Rate</th>
-                    <th className="py-2 px-3 text-center">Qty</th>
-                    <th className="py-2 px-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {order.items.map((item, i) => (
-                    <tr key={i}>
+            {/* Items Table with MRP, Disc%, Selling Rate, Qty, Amount */}
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b-2 border-t-2 border-slate-900 bg-slate-100 font-bold text-slate-800">
+                  <th className="py-2 px-3">#</th>
+                  <th className="py-2 px-3">Cracker Item</th>
+                  <th className="py-2 px-3 text-right">MRP</th>
+                  <th className="py-2 px-3 text-center">Disc%</th>
+                  <th className="py-2 px-3 text-right">Rate</th>
+                  <th className="py-2 px-3 text-center">Qty</th>
+                  <th className="py-2 px-3 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {order.items.map((item, i) => {
+                  const mrp = item.originalPrice && item.originalPrice > item.productPrice ? item.originalPrice : item.productPrice;
+                  const discPct = item.discountPercent && item.discountPercent > 0
+                    ? item.discountPercent
+                    : mrp > item.productPrice
+                    ? Math.round(((mrp - item.productPrice) / mrp) * 100)
+                    : 0;
+
+                  return (
+                    <tr key={i} className="hover:bg-slate-50/50">
                       <td className="py-2.5 px-3 text-slate-400">{i + 1}</td>
                       <td className="py-2.5 px-3 font-semibold text-slate-900">
                         {item.productName}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono">
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-400">
+                        {mrp > item.productPrice ? (
+                          <span className="line-through">{formatINR(mrp)}</span>
+                        ) : (
+                          formatINR(mrp)
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-bold text-emerald-700">
+                        {discPct > 0 ? `${discPct}%` : "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {formatINR(item.productPrice)}
                       </td>
                       <td className="py-2.5 px-3 text-center font-bold">{item.quantity}</td>
@@ -238,39 +195,44 @@ export function POSReceiptModal({ order, settings, onClose }: POSReceiptModalPro
                         {formatINR(item.lineTotal)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  );
+                })}
+              </tbody>
+            </table>
 
-              <div className="flex justify-end pt-2">
-                <div className="w-64 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal:</span>
-                    <span className="font-mono">{formatINR(order.subtotal)}</span>
-                  </div>
-                  {order.discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-700 font-bold">
-                      <span>Discount:</span>
-                      <span className="font-mono">- {formatINR(order.discountAmount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-base font-black border-t-2 border-slate-800 pt-2 text-slate-950">
-                    <span>Grand Total:</span>
-                    <span className="font-mono text-red-600">{formatINR(order.grandTotal)}</span>
-                  </div>
+            {/* Summary */}
+            <div className="invoice-summary flex justify-end pt-2">
+              <div className="w-72 space-y-1.5 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal:</span>
+                  <span className="font-mono">{formatINR(order.subtotal)}</span>
                 </div>
-              </div>
-
-              <div className="border-t pt-4 text-center text-xs text-slate-500">
-                <p className="font-semibold">
-                  {settings.posReceiptFooter || "Thank you for shopping with ATM Crackers Sivakasi!"}
-                </p>
-                <p className="text-[10px] mt-1 text-slate-400">
-                  Subject to Sivakasi Jurisdiction • Computer Generated Receipt
-                </p>
+                {order.discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Discount Savings:</span>
+                    <span className="font-mono">- {formatINR(order.discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-black border-t-2 border-slate-900 pt-2 text-slate-950">
+                  <span>Grand Total:</span>
+                  <span className="font-mono text-red-600">{formatINR(order.grandTotal)}</span>
+                </div>
+                {order.discountAmount > 0 && (
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded text-center mt-2">
+                    🎉 You Saved {formatINR(order.discountAmount)} on this Order!
+                  </div>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Footer */}
+            <div className="invoice-footer border-t border-slate-300 pt-4 text-center text-xs text-slate-500">
+              <p className="font-semibold text-slate-700">{footerMessage}</p>
+              <p className="text-[10px] mt-1 text-slate-400">
+                Subject to Sivakasi Jurisdiction • Computer Generated Receipt
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>

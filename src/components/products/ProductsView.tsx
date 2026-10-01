@@ -4,14 +4,18 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { toast } from "react-toastify";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { Pagination } from "@/components/ui/Pagination";
 import { ProductFilterBar } from "./ProductFilterBar";
 import { ProductTable } from "./ProductTable";
 import { ProductFormModal } from "./ProductFormModal";
+import { ProductImagesModal } from "./ProductImagesModal";
 import {
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct as apiDeleteProduct,
+  uploadProductImages,
+  deleteProductImage,
 } from "@/services/product.service";
 import { getCategories } from "@/services/category.service";
 import type {
@@ -58,6 +62,7 @@ export const ProductsView: React.FC = () => {
   // Modal & Action states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
+  const [imageModalProduct, setImageModalProduct] = useState<ApiProduct | null>(null);
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -114,9 +119,21 @@ export const ProductsView: React.FC = () => {
             : 9999;
         const prodOrder = typeof p.displayOrder === "number" ? p.displayOrder : 9999;
 
+        const mrp = Number(p.mrp) || 0;
+        const rawDiscount = Number(p.discountPercent) || 0;
+        const rawSellingPrice = Number(p.sellingPrice) || 0;
+        const discountPct =
+          rawDiscount > 0
+            ? rawDiscount
+            : mrp > 0 && rawSellingPrice > 0 && rawSellingPrice < mrp
+            ? Math.round(((mrp - rawSellingPrice) / mrp) * 100)
+            : 0;
         const sellingPrice =
-          p.sellingPrice ??
-          Math.round(p.mrp * (1 - (p.discountPercent || 0) / 100));
+          discountPct > 0
+            ? Math.max(0, Math.round(mrp * (1 - discountPct / 100)))
+            : rawSellingPrice > 0
+            ? rawSellingPrice
+            : mrp;
 
         return {
           id: p._id || p.id || "",
@@ -194,17 +211,53 @@ export const ProductsView: React.FC = () => {
   };
 
   const handleFormSubmit = async (
-    payload: CreateProductPayload | UpdateProductPayload
+    payload: CreateProductPayload | UpdateProductPayload,
+    newFiles?: File[],
+    deletedImageKeys?: string[]
   ) => {
     if (editingProduct) {
       const id = editingProduct._id || editingProduct.id || "";
+      // 1. Update text & core data
       const updated = await updateProduct(id, payload as UpdateProductPayload);
+
+      // 2. Delete any removed image keys
+      if (deletedImageKeys && deletedImageKeys.length > 0) {
+        for (const key of deletedImageKeys) {
+          try {
+            await deleteProductImage(id, key);
+          } catch (delErr: any) {
+            console.warn("Failed to delete product image:", key, delErr);
+          }
+        }
+      }
+
+      // 3. Upload new multipart files
+      if (newFiles && newFiles.length > 0) {
+        try {
+          await uploadProductImages(id, newFiles);
+        } catch (uploadErr: any) {
+          toast.warning("Product updated, but image upload failed.");
+        }
+      }
+
       setProducts((prev) =>
         prev.map((p) => ((p._id || p.id) === (updated._id || updated.id) ? updated : p))
       );
       toast.success(`Product "${updated.name}" updated successfully!`);
     } else {
+      // 1. Create product
       const created = await createProduct(payload as CreateProductPayload);
+      const id = created._id || created.id || "";
+
+      // 2. Upload images if selected
+      if (newFiles && newFiles.length > 0 && id) {
+        try {
+          await uploadProductImages(id, newFiles);
+        } catch (uploadErr: any) {
+          toast.warning("Product created, but image upload failed.");
+        }
+      }
+
       setProducts((prev) => [created, ...prev]);
       toast.success(`Product "${created.name}" created successfully!`);
     }
@@ -267,11 +320,16 @@ export const ProductsView: React.FC = () => {
     const list = products.filter((prod) => {
       // Search
       const q = search.toLowerCase().trim();
+      const catName =
+        typeof prod.category === "object" && prod.category
+          ? prod.category.name.toLowerCase()
+          : "";
       const matchesSearch =
         !q ||
         prod.name.toLowerCase().includes(q) ||
         (prod.slug && prod.slug.toLowerCase().includes(q)) ||
-        (prod.description && prod.description.toLowerCase().includes(q));
+        (prod.description && prod.description.toLowerCase().includes(q)) ||
+        catName.includes(q);
 
       // Category
       const prodCatId =
@@ -432,124 +490,20 @@ export const ProductsView: React.FC = () => {
             onToggleActive={handleToggleActive}
             onEdit={handleOpenEdit}
             onDelete={(id) => setDeleteTargetId(id)}
+            onManageImages={(prod) => setImageModalProduct(prod)}
           />
 
           {/* Pagination Controls */}
-          {totalCount > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 px-3 sm:px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-              {/* Summary and Page Size */}
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                <span>
-                  Showing{" "}
-                  <span className="font-bold text-slate-900">
-                    {totalCount === 0 ? 0 : startIndex + 1}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-bold text-slate-900">{endIndex}</span> of{" "}
-                  <span className="font-bold text-slate-900">{totalCount}</span> crackers
-                </span>
-                <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
-                  <span className="text-slate-500">Rows:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      const val =
-                        e.target.value === "all"
-                          ? "all"
-                          : Number(e.target.value);
-                      setPageSize(val);
-                      setCurrentPage(1);
-                    }}
-                    className="bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-lg px-2 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-red-500 cursor-pointer"
-                  >
-                    <option value={15}>15</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value="all">All ({totalCount})</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Page Number Controls */}
-              {pageSize !== "all" && totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(1)}
-                    disabled={activePage === 1}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="First Page"
-                  >
-                    <ChevronsLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(activePage - 1)}
-                    disabled={activePage === 1}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="Previous Page"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-
-                  <div className="flex items-center gap-1 px-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= activePage - 2 && page <= activePage + 2)
-                        );
-                      })
-                      .map((page, index, array) => {
-                        const prev = array[index - 1];
-                        const hasGap = prev && page - prev > 1;
-                        return (
-                          <React.Fragment key={page}>
-                            {hasGap && (
-                              <span className="px-1 text-slate-400 text-xs select-none">
-                                ...
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handlePageChange(page)}
-                              className={`min-w-[28px] h-7 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                activePage === page
-                                  ? "bg-red-600 text-white shadow-xs"
-                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200"
-                              }`}
-                            >
-                              {page}
-                            </button>
-                          </React.Fragment>
-                        );
-                      })}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(activePage + 1)}
-                    disabled={activePage === totalPages}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="Next Page"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={activePage === totalPages}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="Last Page"
-                  >
-                    <ChevronsRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <Pagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[15, 25, 50, 100, "all"]}
+            itemLabel="crackers"
+          />
         </>
       )}
 
@@ -560,6 +514,24 @@ export const ProductsView: React.FC = () => {
         product={editingProduct}
         categories={categoriesList}
         onSubmit={handleFormSubmit}
+      />
+
+      {/* Dedicated Product Images Upload Modal */}
+      <ProductImagesModal
+        isOpen={!!imageModalProduct}
+        onClose={() => setImageModalProduct(null)}
+        product={imageModalProduct}
+        onProductUpdated={(updatedProd) => {
+          setProducts((prev) =>
+            prev.map((p) =>
+              (p._id || p.id) === (updatedProd._id || updatedProd.id)
+                ? updatedProd
+                : p
+            )
+          );
+          setImageModalProduct(updatedProd);
+          loadProducts(true);
+        }}
       />
 
       {/* Delete Confirmation Modal */}

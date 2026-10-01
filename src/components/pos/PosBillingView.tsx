@@ -7,9 +7,14 @@ import { POSCatalogGrid } from "@/components/pos/PosCatalogGrid";
 import { POSCartPanel, BillCartItem } from "@/components/pos/PosCartPanel";
 import { POSMobileCartBar } from "@/components/pos/PosMobileCartBar";
 import { POSReceiptModal } from "@/components/pos/PosReceiptModal";
-import { getProducts } from "@/services/product.service";
+import { getPosProducts, createPosBill } from "@/services/pos.service";
 import { getCategories } from "@/services/category.service";
-import type { ApiProduct } from "@/types/product.types";
+import type {
+  PosProduct,
+  PosPaymentMethod,
+  PosPaymentStatus,
+  PosCreateBillPayload,
+} from "@/types/pos.types";
 import type { ApiCategory } from "@/types/category.types";
 import { AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 
@@ -42,14 +47,16 @@ export const PosBillingView: React.FC = () => {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<Order["paymentMethod"]>("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("CASH");
+  const [paymentStatus, setPaymentStatus] = useState<PosPaymentStatus>("PENDING");
+  const [amountReceived, setAmountReceived] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [mobileTab, setMobileTab] = useState<"catalog" | "cart">("catalog");
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
-  // ─── Fetch Live Catalog Directly from Server API ──────────────────────────
+  // ─── Fetch Live POS Products from Server API (/admin/pos/products) ──────────
   const fetchLiveCatalog = useCallback(
     async (isSilent = false) => {
       if (!isSilent) setLoading(true);
@@ -58,12 +65,14 @@ export const PosBillingView: React.FC = () => {
 
       try {
         const [apiCats, apiProds] = await Promise.all([
-          getCategories(),
-          getProducts(),
+          getCategories().catch(() => []),
+          getPosProducts(),
         ]);
 
-        const mappedCats: Category[] = (apiCats || [])
-          .map((c: ApiCategory) => ({
+        // Build category list from getCategories + embedded categories in PosProducts
+        const catsMap = new Map<string, Category>();
+        (apiCats || []).forEach((c: ApiCategory) => {
+          catsMap.set(c._id, {
             id: c._id,
             name: c.name,
             slug: c.slug,
@@ -71,10 +80,31 @@ export const PosBillingView: React.FC = () => {
             imageUrl: c.imageUrl,
             sortOrder: c.displayOrder || 0,
             isActive: c.status === "ACTIVE",
-          }))
-          .sort((a, b) => a.sortOrder - b.sortOrder);
+          });
+        });
 
-        const mappedProds: Product[] = (apiProds || []).map((p: ApiProduct) => {
+        (apiProds || []).forEach((p: PosProduct) => {
+          if (p.category && typeof p.category === "object" && p.category._id) {
+            if (!catsMap.has(p.category._id)) {
+              catsMap.set(p.category._id, {
+                id: p.category._id,
+                name: p.category.name,
+                slug: p.category.slug,
+                icon: "💥",
+                imageUrl: p.category.imageUrl,
+                sortOrder: p.category.displayOrder ?? 9999,
+                isActive: p.category.status !== "INACTIVE",
+              });
+            }
+          }
+        });
+
+        const mappedCats: Category[] = Array.from(catsMap.values()).sort(
+          (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
+        );
+
+        // Map POS products with accurate pre-calculated MRP, discountPercent, and sellingPrice
+        const mappedProds: Product[] = (apiProds || []).map((p: PosProduct) => {
           const catId =
             typeof p.category === "object" && p.category
               ? p.category._id
@@ -91,16 +121,23 @@ export const PosBillingView: React.FC = () => {
               : 9999;
           const prodOrder = typeof p.displayOrder === "number" ? p.displayOrder : 9999;
 
-          const sellingPrice =
-            p.sellingPrice ??
-            Math.round(p.mrp * (1 - (p.discountPercent || 0) / 100));
+          const mrp = Number(p.mrp) || Number(p.sellingPrice) || 0;
+          const sellingPrice = Number(p.sellingPrice) || 0;
+          const rawDiscount = Number(p.discountPercent) || 0;
+          const discountPct =
+            rawDiscount > 0
+              ? rawDiscount
+              : mrp > 0 && sellingPrice > 0 && sellingPrice < mrp
+              ? Math.round(((mrp - sellingPrice) / mrp) * 100)
+              : 0;
 
           return {
-            id: p._id || p.id || "",
+            id: p.id || p._id || "",
             name: p.name,
-            sku: p.slug || (p._id ? p._id.slice(-6).toUpperCase() : "CRK-001"),
+            sku: p.slug || (p.id ? p.id.slice(-6).toUpperCase() : "CRK-001"),
             price: sellingPrice,
-            originalPrice: p.mrp,
+            originalPrice: mrp,
+            discountPercent: discountPct,
             stockQuantity:
               typeof p.stockQuantity === "number"
                 ? p.stockQuantity
@@ -109,10 +146,7 @@ export const PosBillingView: React.FC = () => {
                 : p.stockStatus === "limited"
                 ? 10
                 : 100,
-            lowStockThreshold:
-              typeof p.lowStockThreshold === "number"
-                ? p.lowStockThreshold
-                : 10,
+            lowStockThreshold: 10,
             categoryId: catId,
             categoryName: catName,
             categoryDisplayOrder: catOrder,
@@ -120,10 +154,10 @@ export const PosBillingView: React.FC = () => {
             unit: "1 Box",
             description: p.description || "",
             imageUrl:
-              Array.isArray(p.images) && p.images.length > 0
+              Array.isArray(p.images) && p.images.length > 0 && p.images[0]
                 ? p.images[0]
                 : "https://placehold.co/600x600/F5A623/111827?text=ATM+Crackers",
-            isActive: p.status === "ACTIVE",
+            isActive: p.stockStatus !== "out_of_stock",
             isFeatured: false,
             createdAt: p.createdAt || new Date().toISOString(),
           };
@@ -284,7 +318,15 @@ export const PosBillingView: React.FC = () => {
   }, []);
 
   // ── Calculations ──────────────────────────────────────────────────────────
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const totalMrp = cart.reduce(
+    (sum, item) => sum + (item.product.originalPrice || item.product.price) * item.quantity,
+    0
+  );
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+  const productDiscount = Math.max(0, totalMrp - subtotal);
   const grandTotal = Math.max(0, subtotal - couponDiscount);
   const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -316,30 +358,95 @@ export const PosBillingView: React.FC = () => {
   // ── Checkout ──────────────────────────────────────────────────────────────
   const handleCheckout = () => {
     if (cart.length === 0) return;
+
+    const trimmedName = customerName.trim();
+    if (trimmedName && (trimmedName.length < 2 || trimmedName.length > 60)) {
+      alert("Customer name must be between 2 and 60 characters.");
+      return;
+    }
+
+    const trimmedPhone = customerPhone.trim();
+    const phoneDigits = trimmedPhone.replace(/\D/g, "");
+    if (trimmedPhone && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+      alert("Customer phone number must be between 10 and 15 digits.");
+      return;
+    }
+
+    const trimmedAddress = customerAddress.trim();
+    if (trimmedAddress && (trimmedAddress.length < 3 || trimmedAddress.length > 150)) {
+      alert("Address must be between 3 and 150 characters.");
+      return;
+    }
+
     const orderItems = cart.map((item) => ({
       productId: item.product.id,
       productName: item.product.name,
       productPrice: item.product.price,
+      originalPrice: item.product.originalPrice || item.product.price,
+      discountPercent: item.product.discountPercent || 0,
       quantity: item.quantity,
       unit: item.product.unit,
       lineTotal: item.product.price * item.quantity,
     }));
+
+    const finalSubtotal = totalMrp > subtotal ? totalMrp : subtotal;
+    const finalDiscount = productDiscount + couponDiscount;
+
     const order = createPOSOrder({
       customerName: customerName.trim() || "Walk-in Customer",
       customerPhone: customerPhone.trim() || "-",
       customerAddress: customerAddress.trim() || undefined,
       items: orderItems,
-      subtotal,
-      discountAmount: couponDiscount,
+      subtotal: finalSubtotal,
+      discountAmount: finalDiscount,
       grandTotal,
-      paymentMethod: "CASH",
-      notes: customerAddress.trim() ? `Address: ${customerAddress.trim()}` : "In-store POS counter transaction",
+      paymentMethod,
+      paymentStatus: "PENDING",
+      amountReceived: grandTotal,
+      notes: customerAddress.trim()
+        ? `Address: ${customerAddress.trim()}`
+        : `POS sale (${paymentMethod} - PENDING)`,
     });
+
+    // Fire backend POS bill creation asynchronously in background
+    try {
+      const payload: PosCreateBillPayload = {
+        customer: {
+          name: customerName.trim() || "Walk-in Customer",
+          mobile: customerPhone.trim() || "-",
+        },
+        shippingAddress: customerAddress.trim()
+          ? {
+              fullName: customerName.trim() || "Walk-in Customer",
+              streetAddress: customerAddress.trim(),
+              city: "Sivakasi",
+              pincode: "626123",
+            }
+          : undefined,
+        items: cart.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        })),
+        couponCode: appliedCoupon?.code || undefined,
+        paymentMethod,
+        paymentStatus: "PENDING",
+        amountReceived: grandTotal,
+      };
+      createPosBill(payload).catch((err) => {
+        console.warn("Backend POS bill sync note:", err?.message || err);
+      });
+    } catch {
+      // ignore
+    }
+
     setCompletedOrder(order);
     clearCart();
     setCustomerName("");
     setCustomerPhone("");
     setCustomerAddress("");
+    setAmountReceived("");
+    setPaymentMethod("CASH");
+    setPaymentStatus("PENDING");
     setMobileTab("catalog");
   };
 
@@ -431,9 +538,17 @@ export const PosBillingView: React.FC = () => {
           <POSCartPanel
             cart={cart}
             totalCartUnits={totalCartUnits}
+            totalMrp={totalMrp}
+            productDiscount={productDiscount}
             subtotal={subtotal}
             couponDiscount={couponDiscount}
             grandTotal={grandTotal}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            paymentStatus={paymentStatus}
+            onPaymentStatusChange={setPaymentStatus}
+            amountReceived={amountReceived}
+            onAmountReceivedChange={setAmountReceived}
             customerName={customerName}
             onCustomerNameChange={setCustomerName}
             customerPhone={customerPhone}

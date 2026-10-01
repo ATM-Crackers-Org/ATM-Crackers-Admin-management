@@ -21,6 +21,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
       <input
         type="text"
+        maxLength={100}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

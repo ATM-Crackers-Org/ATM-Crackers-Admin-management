@@ -75,3 +75,33 @@ export async function deleteCategory(id: string): Promise<{ message: string }> {
   const { data } = await api.delete<{ message: string }>(`/admin/categories/${id}`);
   return data;
 }
+
+// ─── POST /admin/categories/{id}/image ────────────────────────────────────────
+// Upload category image as multipart/form-data (single file, field: 'file')
+
+export async function uploadCategoryImage(
+  id: string,
+  file: File
+): Promise<{ message: string; data?: any }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { data } = await api.post<{ message: string; data?: any }>(
+    `/admin/categories/${id}/image`,
+    formData
+  );
+  return data;
+}
+
+// ─── DELETE /admin/categories/{id}/image ──────────────────────────────────────
+// Delete category image
+
+export async function deleteCategoryImage(
+  id: string
+): Promise<{ message: string }> {
+  const { data } = await api.delete<{ message: string }>(
+    `/admin/categories/${id}/image`
+  );
+  return data;
+}
+

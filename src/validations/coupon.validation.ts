@@ -18,6 +18,7 @@ export const couponValidationSchema = Yup.object({
   discountValue: Yup.number()
     .typeError("Discount value must be a number")
     .positive("Discount value must be greater than 0")
+    .max(1000000, "Discount value cannot exceed ₹10,00,000")
     .required("Discount value is required")
     .when("discountType", {
       is: "PERCENTAGE",
@@ -27,23 +28,27 @@ export const couponValidationSchema = Yup.object({
   minimumOrderValue: Yup.number()
     .typeError("Minimum order value must be a number")
     .min(0, "Minimum order value cannot be negative")
+    .max(1000000, "Minimum order value cannot exceed ₹10,00,000")
     .default(0),
 
   maximumDiscount: Yup.number()
     .nullable()
     .transform((val, orig) => (orig === "" || orig === undefined ? null : val))
     .typeError("Maximum discount must be a number")
-    .min(0, "Maximum discount cannot be negative"),
+    .min(0, "Maximum discount cannot be negative")
+    .max(1000000, "Maximum discount cannot exceed ₹10,00,000"),
 
   usageLimit: Yup.number()
     .nullable()
     .transform((val, orig) => (orig === "" || orig === undefined ? null : val))
     .typeError("Usage limit must be a number")
-    .min(1, "Usage limit must be at least 1"),
+    .min(1, "Usage limit must be at least 1")
+    .max(1000000, "Usage limit cannot exceed 10,00,000"),
 
   perCustomerLimit: Yup.number()
     .typeError("Per-customer limit must be a number")
     .min(1, "Per-customer limit must be at least 1")
+    .max(100, "Per-customer limit cannot exceed 100")
     .default(1),
 
   startAt: Yup.string()

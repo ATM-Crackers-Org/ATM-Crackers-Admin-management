@@ -120,8 +120,38 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={coupon ? "Edit Discount Coupon" : "Create New Discount Coupon"}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="coupon-form"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving Coupon...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>{coupon ? "Update Coupon" : "Create Coupon"}</span>
+              </>
+            )}
+          </button>
+        </>
+      }
     >
-      <form onSubmit={formik.handleSubmit} className="space-y-4 pt-1">
+      <form id="coupon-form" onSubmit={formik.handleSubmit} className="space-y-4 pt-1">
         {/* Coupon Code & Status */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
@@ -133,6 +163,8 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
                 id="code"
                 name="code"
                 type="text"
+                minLength={3}
+                maxLength={30}
                 placeholder="e.g. DIWALI500"
                 value={formik.values.code}
                 onChange={(e) =>
@@ -178,13 +210,19 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
 
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-xs font-semibold text-slate-700 mb-1">
-            Description / Promotion Note
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="description" className="block text-xs font-semibold text-slate-700">
+              Description / Promotion Note
+            </label>
+            <span className="text-[10px] text-slate-400">
+              {(formik.values.description || "").length} / 250
+            </span>
+          </div>
           <input
             id="description"
             name="description"
             type="text"
+            maxLength={250}
             placeholder="e.g. Flat Diwali festive booking discount"
             value={formik.values.description}
             onChange={formik.handleChange}
@@ -229,7 +267,7 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
               name="discountValue"
               type="number"
               min={1}
-              max={formik.values.discountType === "PERCENTAGE" ? 100 : undefined}
+              max={formik.values.discountType === "PERCENTAGE" ? 100 : 1000000}
               value={formik.values.discountValue}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -259,6 +297,7 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
               name="minimumOrderValue"
               type="number"
               min={0}
+              max={1000000}
               placeholder="0"
               value={formik.values.minimumOrderValue}
               onChange={formik.handleChange}
@@ -282,6 +321,7 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
               name="maximumDiscount"
               type="number"
               min={0}
+              max={1000000}
               placeholder={formik.values.discountType === "PERCENTAGE" ? "e.g. 1000" : "None"}
               value={formik.values.maximumDiscount ?? ""}
               onChange={formik.handleChange}
@@ -308,6 +348,7 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
               name="usageLimit"
               type="number"
               min={1}
+              max={1000000}
               placeholder="e.g. 1000 redemptions"
               value={formik.values.usageLimit ?? ""}
               onChange={formik.handleChange}
@@ -331,6 +372,7 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
               name="perCustomerLimit"
               type="number"
               min={1}
+              max={100}
               value={formik.values.perCustomerLimit}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -398,34 +440,6 @@ export const CouponFormModal: React.FC<CouponFormModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Buttons */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-70"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Saving Coupon...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>{coupon ? "Update Coupon" : "Create Coupon"}</span>
-              </>
-            )}
-          </button>
-        </div>
       </form>
     </Modal>
   );

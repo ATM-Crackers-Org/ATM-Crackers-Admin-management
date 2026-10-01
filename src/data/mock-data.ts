@@ -5,6 +5,7 @@ export interface Product {
   sku: string;
   price: number;
   originalPrice: number;
+  discountPercent?: number;
   stockQuantity: number;
   lowStockThreshold: number;
   categoryId: string;
@@ -34,6 +35,8 @@ export interface OrderItem {
   productId: string;
   productName: string;
   productPrice: number;
+  originalPrice?: number;
+  discountPercent?: number;
   quantity: number;
   unit: string;
   lineTotal: number;
@@ -125,17 +128,6 @@ export interface Offer {
   isActive: boolean;
 }
 
-export interface Banner {
-  id: string;
-  title: string;
-  tagline: string;
-  buttonText: string;
-  linkUrl: string;
-  imageUrl: string;
-  sortOrder: number;
-  isActive: boolean;
-}
-
 export interface AuditLog {
   id: string;
   action: string;
@@ -204,29 +196,6 @@ export const INITIAL_OFFERS: Offer[] = [
     linkUrl: "/products",
     startDate: "2026-06-10",
     endDate: "2026-10-30",
-    isActive: true,
-  },
-];
-
-export const INITIAL_BANNERS: Banner[] = [
-  {
-    id: "ban-1",
-    title: "ATM Crackers — Original Sivakasi Crackers",
-    tagline: "Direct from the firecrackers capital of India with safe green chemical certifications.",
-    buttonText: "Explore Catalog",
-    linkUrl: "/products",
-    imageUrl: "https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=1200&auto=format&fit=crop&q=80",
-    sortOrder: 1,
-    isActive: true,
-  },
-  {
-    id: "ban-2",
-    title: "Spectacular Repeating Sky Shots 2025",
-    tagline: "Celebrate in high colour with our 12, 30 & 60-shot grand aerial display shells.",
-    buttonText: "View Sky Shots",
-    linkUrl: "/products?category=cat-7",
-    imageUrl: "https://images.unsplash.com/photo-1533230408708-8f9f91d1235a?w=1200&auto=format&fit=crop&q=80",
-    sortOrder: 2,
     isActive: true,
   },
 ];

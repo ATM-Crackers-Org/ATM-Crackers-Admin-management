@@ -20,6 +20,7 @@ import type {
   OrderStatus,
   OrderPaymentStatus,
 } from "@/types/order.types";
+import { canTransitionToStatus } from "@/validations/order.validation";
 import { useAdminStore } from "@/context/admin-store";
 import type { Order } from "@/data/mock-data";
 import { formatINR } from "@/lib/utils";
@@ -30,9 +31,128 @@ import {
   DollarSign,
   AlertCircle,
   RotateCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
-export const OrdersView: React.FC = () => {
+// ─── Pagination Component ────────────────────────────────────────────────────
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+interface PaginationBarProps {
+  total: number;
+  page: number;
+  pageSize: PageSize;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (ps: PageSize) => void;
+}
+
+function PaginationBar({ total, page, pageSize, onPageChange, onPageSizeChange }: PaginationBarProps) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  const pages: (number | "...")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white border-t border-slate-100">
+      {/* Left: info + page size */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-500">
+          Showing <span className="font-semibold text-slate-700">{from}–{to}</span> of{" "}
+          <span className="font-semibold text-slate-700">{total}</span> orders
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
+            className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 font-medium outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Right: page nav */}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onPageChange(1)}
+          disabled={page === 1}
+          title="First page"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+        >
+          <ChevronsLeft className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          title="Previous page"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+
+        {pages.map((p, idx) =>
+          p === "..." ? (
+            <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs text-slate-400">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPageChange(p as number)}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                p === page
+                  ? "bg-red-600 border-red-600 text-white shadow-sm shadow-red-600/30"
+                  : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          title="Next page"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onPageChange(totalPages)}
+          disabled={page === totalPages}
+          title="Last page"
+          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+        >
+          <ChevronsRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export const OrdersView: React.FC<{ hideHeader?: boolean }> = ({ hideHeader = false }) => {
   const { setOrdersList } = useAdminStore();
   const syncStoreRef = useRef(setOrdersList);
   syncStoreRef.current = setOrdersList;
@@ -47,6 +167,10 @@ export const OrdersView: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<OrderPaymentStatus | "ALL">("ALL");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
 
   // Refs so loadOrders can read latest filter values without being recreated
   const searchRef = useRef(search);
@@ -142,6 +266,7 @@ export const OrdersView: React.FC = () => {
   // Filter changes: debounced re-fetch (does NOT depend on loadOrders ref)
   useEffect(() => {
     const timer = setTimeout(() => {
+      setCurrentPage(1); // reset to page 1 on filter change
       loadOrders();
     }, 350);
     return () => clearTimeout(timer);
@@ -149,6 +274,13 @@ export const OrdersView: React.FC = () => {
 
   // ─── Quick Advance Status from Table ────────────────────────────────────────
   const handleQuickStatusChange = async (order: ApiOrder, newStatus: OrderStatus) => {
+    // Validate strict sequential workflow and payment prerequisite
+    const validation = canTransitionToStatus(order, newStatus);
+    if (!validation.allowed) {
+      toast.error(validation.reason || "Invalid status transition.");
+      return;
+    }
+
     try {
       await apiUpdateOrderStatus(order.orderNumber, newStatus);
       toast.success(`Order ${order.orderNumber} updated to ${newStatus}`);
@@ -175,6 +307,11 @@ export const OrdersView: React.FC = () => {
     order: ApiOrder,
     newStatus: OrderPaymentStatus
   ) => {
+    if (order.orderStatus === "CANCELLED") {
+      toast.error("Payment status cannot be changed for cancelled orders.");
+      return;
+    }
+
     try {
       await apiUpdateOrderPaymentStatus(order.orderNumber, newStatus);
       toast.success(
@@ -246,6 +383,12 @@ export const OrdersView: React.FC = () => {
     return counts;
   }, [orders]);
 
+  // ─── Paginated slice ─────────────────────────────────────────────────────────
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return orders.slice(start, start + pageSize);
+  }, [orders, currentPage, pageSize]);
+
   // Overall KPIs from current list
   const metrics = useMemo(() => {
     const totalCount = orders.length;
@@ -261,24 +404,26 @@ export const OrdersView: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* 1. Header */}
-      <PageHeader
-        title="Orders Dispatch & Management"
-        description="Track customer bookings, advance status workflows, manage payments, and generate tax invoices."
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => loadOrders(true)}
-              disabled={refreshing || loading}
-              className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Refresh orders"
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-red-600" : ""}`} />
-              <span>Refresh</span>
-            </button>
-          </div>
-        }
-      />
+      {!hideHeader && (
+        <PageHeader
+          title="Orders Dispatch & Management"
+          description="Track customer bookings, advance status workflows, manage payments, and generate tax invoices."
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => loadOrders(true)}
+                disabled={refreshing || loading}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Refresh orders"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-red-600" : ""}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
+          }
+        />
+      )}
 
       {/* 2. Top Metric KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -372,19 +517,30 @@ export const OrdersView: React.FC = () => {
         totalOrders={orders.length}
       />
 
-      {/* 6. Orders Table */}
-      <OrderTable
-        orders={orders}
-        loading={loading}
-        onViewOrder={(ord) => {
-          setSelectedOrder(ord);
-          setSelectedOrderNumber(ord.orderNumber);
-        }}
-        onPrintOrder={(ord) => setInvoiceOrder(ord)}
-        onUpdateOrderStatus={handleQuickStatusChange}
-        onUpdatePaymentStatus={handlePaymentStatusChange}
-        onRequestCancel={(ord) => setCancelTargetOrder(ord)}
-      />
+      {/* 6. Orders Table + Pagination */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <OrderTable
+          orders={paginatedOrders}
+          loading={loading}
+          onViewOrder={(ord) => {
+            setSelectedOrder(ord);
+            setSelectedOrderNumber(ord.orderNumber);
+          }}
+          onPrintOrder={(ord) => setInvoiceOrder(ord)}
+          onUpdateOrderStatus={handleQuickStatusChange}
+          onUpdatePaymentStatus={handlePaymentStatusChange}
+          onRequestCancel={(ord) => setCancelTargetOrder(ord)}
+        />
+        {!loading && orders.length > 0 && (
+          <PaginationBar
+            total={orders.length}
+            page={currentPage}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(ps) => { setPageSize(ps); setCurrentPage(1); }}
+          />
+        )}
+      </div>
 
       {/* 7. Complete Order Details Modal */}
       <OrderDetailsModal

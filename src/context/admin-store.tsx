@@ -16,7 +16,6 @@ import {
   Customer,
   Coupon,
   Offer,
-  Banner,
   AuditLog,
   StoreSettings,
   INITIAL_PRODUCTS,
@@ -26,7 +25,6 @@ import {
   INITIAL_CUSTOMERS,
   INITIAL_COUPONS,
   INITIAL_OFFERS,
-  INITIAL_BANNERS,
   INITIAL_AUDIT_LOGS,
   INITIAL_SETTINGS,
 } from "@/data/mock-data";
@@ -79,6 +77,8 @@ interface AdminStoreContextType {
     discountAmount: number;
     grandTotal: number;
     paymentMethod?: Order["paymentMethod"];
+    paymentStatus?: "PENDING" | "PAID";
+    amountReceived?: number;
     notes?: string;
   }) => Order;
 
@@ -103,13 +103,6 @@ interface AdminStoreContextType {
   updateOffer: (id: string, off: Partial<Offer>) => void;
   deleteOffer: (id: string) => void;
   toggleOfferActive: (id: string) => void;
-
-  // Banners
-  banners: Banner[];
-  addBanner: (ban: Omit<Banner, "id">) => void;
-  updateBanner: (id: string, ban: Partial<Banner>) => void;
-  deleteBanner: (id: string) => void;
-  toggleBannerActive: (id: string) => void;
 
   // Audit Logs
   auditLogs: AuditLog[];
@@ -141,7 +134,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
   const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
-  const [banners, setBanners] = useState<Banner[]>(INITIAL_BANNERS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [settings, setSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -175,11 +167,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         } else {
           setOffers(INITIAL_OFFERS);
         }
-        if (parsed.banners && Array.isArray(parsed.banners) && parsed.banners.length > 0) {
-          setBanners(parsed.banners);
-        } else {
-          setBanners(INITIAL_BANNERS);
-        }
+
         if (parsed.auditLogs && Array.isArray(parsed.auditLogs)) {
           setAuditLogs(parsed.auditLogs.filter((a: AuditLog) => !a.id.startsWith("aud-")));
         }
@@ -342,7 +330,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         customers,
         coupons,
         offers,
-        banners,
         auditLogs,
         currentUser,
       };
@@ -356,7 +343,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     customers,
     coupons,
     offers,
-    banners,
     auditLogs,
     currentUser,
   ]);
@@ -531,6 +517,10 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
   const updateOrderStatus = (id: string, status: Order["status"]) => {
     const order = orders.find((o) => o.id === id);
     if (order) {
+      if (status === "CONFIRMED" && order.paymentStatus !== "PAID") {
+        toast.error("Order payment must be marked as PAID before confirming!");
+        return;
+      }
       logAction("ORDER_STATUS_UPDATE", "ORDERS", `Order ${order.orderNumber} status changed to ${status}`);
     }
     setOrders((prev) =>
@@ -548,6 +538,8 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     discountAmount: number;
     grandTotal: number;
     paymentMethod?: Order["paymentMethod"];
+    paymentStatus?: "PENDING" | "PAID";
+    amountReceived?: number;
     notes?: string;
   }): Order => {
     const orderNum = "POS-2026-" + Math.floor(1000 + Math.random() * 9000);
@@ -570,6 +562,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
       taxAmount: 0,
       grandTotal: orderData.grandTotal,
       paymentMethod: orderData.paymentMethod || "CASH",
+      paymentStatus: orderData.paymentStatus || "PAID",
       status: "DELIVERED",
       channel: "POS",
       notes: orderData.notes || "In-store POS counter transaction",
@@ -747,27 +740,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     toast.info("Offer status updated.");
   };
 
-  // Banners
-  const addBanner = (banData: Omit<Banner, "id">) => {
-    const newBan: Banner = { ...banData, id: "ban-" + Date.now() };
-    setBanners((prev) => [...prev, newBan]);
-    toast.success(`Banner "${newBan.title}" added!`);
-  };
-
-  const updateBanner = (id: string, banData: Partial<Banner>) => {
-    setBanners((prev) => prev.map((b) => (b.id === id ? { ...b, ...banData } : b)));
-    toast.success("Banner updated!");
-  };
-
-  const deleteBanner = (id: string) => {
-    setBanners((prev) => prev.filter((b) => b.id !== id));
-    toast.success("Banner deleted!");
-  };
-
-  const toggleBannerActive = (id: string) => {
-    setBanners((prev) => prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)));
-    toast.info("Banner status updated.");
-  };
 
   // Audit Logs
   const addAuditLog = (action: string, module: string, description: string) => {
@@ -793,7 +765,6 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
     setCustomers(INITIAL_CUSTOMERS);
     setCoupons(INITIAL_COUPONS);
     setOffers(INITIAL_OFFERS);
-    setBanners(INITIAL_BANNERS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setSettings(INITIAL_SETTINGS);
     localStorage.removeItem(STORAGE_KEY);
@@ -842,11 +813,7 @@ export function AdminStoreProvider({ children }: { children: React.ReactNode }) 
         updateOffer,
         deleteOffer,
         toggleOfferActive,
-        banners,
-        addBanner,
-        updateBanner,
-        deleteBanner,
-        toggleBannerActive,
+
         auditLogs,
         addAuditLog,
         clearAuditLogs,

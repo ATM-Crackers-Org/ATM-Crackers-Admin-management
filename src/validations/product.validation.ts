@@ -13,6 +13,7 @@ export const productValidationSchema = Yup.object({
 
   slug: Yup.string()
     .trim()
+    .max(100, "Slug cannot exceed 100 characters")
     .test("is-slug-valid", "Slug must be lowercase and URL-friendly (e.g. three-sound)", (val) => {
       if (!val || val.trim() === "") return true;
       return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val.trim());
@@ -24,6 +25,7 @@ export const productValidationSchema = Yup.object({
   mrp: Yup.number()
     .typeError("MRP must be a valid number")
     .min(0, "MRP must be 0 or greater")
+    .max(1000000, "MRP cannot exceed ₹10,00,000")
     .required("MRP is required"),
 
   discountPercent: Yup.number()
@@ -36,12 +38,14 @@ export const productValidationSchema = Yup.object({
     .typeError("Stock quantity must be a valid number")
     .integer("Stock quantity must be a whole number")
     .min(0, "Stock quantity cannot be negative")
+    .max(1000000, "Stock quantity cannot exceed 10,00,000 units")
     .required("Stock quantity is required"),
 
   lowStockThreshold: Yup.number()
     .typeError("Low stock threshold must be a valid number")
     .integer("Low stock threshold must be a whole number")
     .min(0, "Low stock threshold cannot be negative")
+    .max(100000, "Low stock threshold cannot exceed 1,00,000 units")
     .default(10),
 
   stockStatus: Yup.string()
@@ -55,5 +59,6 @@ export const productValidationSchema = Yup.object({
   displayOrder: Yup.number()
     .typeError("Display order must be a number")
     .min(0, "Display order must be 0 or greater")
+    .max(9999, "Display order cannot exceed 9999")
     .default(0),
 });

@@ -2,18 +2,20 @@
 
 import React from "react";
 import type { ApiCategory } from "@/types/category.types";
-import { Edit, Trash2, Layers, Package } from "lucide-react";
+import { Edit, Trash2, Layers, Package, Camera } from "lucide-react";
 
 interface CategoryCardProps {
   category: ApiCategory;
   onEdit: (category: ApiCategory) => void;
   onDelete: (categoryId: string) => void;
+  onManageImage?: (category: ApiCategory) => void;
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   onEdit,
   onDelete,
+  onManageImage,
 }) => {
   const isActive = category.status === "ACTIVE";
 
@@ -22,22 +24,43 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       <div>
         {/* Top Header: Image / Icon + Actions */}
         <div className="flex items-start justify-between gap-2.5 mb-2.5">
-          <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+          {/* Hoverable Category Image Thumbnail */}
+          <div
+            onClick={() => onManageImage && onManageImage(category)}
+            className="relative w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 cursor-pointer group/img shadow-xs"
+            title="Click or hover to manage/upload category image"
+          >
             {category.imageUrl ? (
               <img
                 src={category.imageUrl}
                 alt={category.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-110"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
             ) : (
-              <Layers className="w-4 h-4 text-slate-400" />
+              <Layers className="w-5 h-5 text-slate-400" />
             )}
+
+            {/* Hover overlay for quick image upload */}
+            <div className="absolute inset-0 bg-slate-900/65 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-[1px]">
+              <Camera className="w-3.5 h-3.5" />
+              <span className="text-[8px] font-bold mt-0.5 leading-none">Upload</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-0.5">
+            {onManageImage && (
+              <button
+                onClick={() => onManageImage(category)}
+                className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                title="Manage Category Image"
+                aria-label={`Manage image for ${category.name}`}
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               onClick={() => onEdit(category)}
               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"

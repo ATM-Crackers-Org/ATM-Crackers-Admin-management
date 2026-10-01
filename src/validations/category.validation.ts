@@ -10,6 +10,7 @@ export const categoryValidationSchema = Yup.object({
 
   slug: Yup.string()
     .trim()
+    .max(100, "Slug cannot exceed 100 characters")
     .test(
       "is-slug-valid",
       "Slug must be lowercase and URL-friendly (e.g., double-sound-effect)",
@@ -19,18 +20,18 @@ export const categoryValidationSchema = Yup.object({
       }
     ),
 
-  description: Yup.string().trim(),
+  description: Yup.string()
+    .trim()
+    .max(500, "Description cannot exceed 500 characters"),
 
   imageUrl: Yup.string()
     .trim()
-    .test("is-valid-url", "Must be a valid image URL (http:// or https://)", (value) => {
-      if (!value || value.trim() === "") return true; // optional
-      return /^(https?:\/\/).+/.test(value.trim());
-    }),
+    .optional(),
 
   displayOrder: Yup.number()
     .typeError("Display order must be a number")
     .min(0, "Display order must be 0 or greater")
+    .max(9999, "Display order cannot exceed 9999")
     .optional(),
 
   status: Yup.string()

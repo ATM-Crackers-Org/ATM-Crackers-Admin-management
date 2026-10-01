@@ -29,7 +29,7 @@ export function cleanProductPayload<T extends Record<string, any>>(payload: T): 
         cleaned[key] = filtered;
       }
     } else if (
-      ["stockQuantity", "lowStockThreshold", "mrp", "discountPercent", "displayOrder"].includes(key)
+      ["stockQuantity", "lowStockThreshold", "mrp", "discountPercent", "displayOrder", "sellingPrice"].includes(key)
     ) {
       if (value !== undefined && value !== null && value !== "") {
         const num = Number(value);
@@ -107,3 +107,39 @@ export async function deleteProduct(id: string): Promise<{ message: string }> {
   const { data } = await api.delete<{ message: string }>(`/admin/products/${id}`);
   return data;
 }
+
+// ─── POST /admin/products/{id}/images ─────────────────────────────────────────
+// Upload multiple product images as multipart/form-data (field: 'files')
+
+export async function uploadProductImages(
+  id: string,
+  files: File[]
+): Promise<{ message: string; data?: any }> {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await api.post<{ message: string; data?: any }>(
+    `/admin/products/${id}/images`,
+    formData
+  );
+  return data;
+}
+
+// ─── DELETE /admin/products/{id}/images ────────────────────────────────────────
+// Delete one product image by imageKey
+
+export async function deleteProductImage(
+  id: string,
+  imageKey: string
+): Promise<{ message: string }> {
+  const { data } = await api.delete<{ message: string }>(
+    `/admin/products/${id}/images`,
+    {
+      data: { imageKey },
+    }
+  );
+  return data;
+}
+

@@ -20,6 +20,7 @@ import {
   canCancelOrder,
   getNextAllowedStatuses,
   isValidStatusTransition,
+  canTransitionToStatus,
 } from "@/validations/order.validation";
 import { formatINR, formatDate } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
@@ -39,9 +40,13 @@ import {
   Ban,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Copy,
   Check,
   ChevronRight,
+  ArrowRight,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 
 interface OrderDetailsModalProps {
@@ -117,6 +122,14 @@ export function OrderDetailsModal({
   // ─── Status Update Handler ──────────────────────────────────────────────────
   const handleUpdateStatus = async (targetStatus: OrderStatus) => {
     if (!order) return;
+
+    // Validate sequential workflow and payment status prerequisite
+    const validation = canTransitionToStatus(order, targetStatus);
+    if (!validation.allowed) {
+      toast.error(validation.reason || "Invalid status transition.");
+      return;
+    }
+
     setStatusUpdating(true);
     try {
       const updated = await updateOrderStatus(order.orderNumber, targetStatus);
@@ -139,6 +152,13 @@ export function OrderDetailsModal({
   // ─── Payment Status Update Handler ──────────────────────────────────────────
   const handleUpdatePaymentStatus = async (newPaymentStatus: OrderPaymentStatus) => {
     if (!order || newPaymentStatus === order.paymentStatus) return;
+
+    if (order.orderStatus === "CANCELLED") {
+      toast.error("Payment status cannot be changed for cancelled orders.");
+      setSelectedPaymentStatus(order.paymentStatus);
+      return;
+    }
+
     setPaymentUpdating(true);
     try {
       const updated = await updateOrderPaymentStatus(order.orderNumber, newPaymentStatus);
@@ -476,24 +496,39 @@ export function OrderDetailsModal({
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
                     <span className="text-slate-600 font-semibold">Payment Status:</span>
                     <div className="flex items-center gap-2">
-                      <select
-                        value={selectedPaymentStatus || order.paymentStatus}
-                        disabled={paymentUpdating}
-                        onChange={(e) => {
-                          const val = e.target.value as OrderPaymentStatus;
-                          setSelectedPaymentStatus(val);
-                          handleUpdatePaymentStatus(val);
-                        }}
-                        className="text-xs font-bold rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-800 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-100 cursor-pointer disabled:opacity-50"
-                      >
-                        {ALL_PAYMENT_STATUSES.map((st) => (
-                          <option key={st} value={st}>
-                            {st}
-                          </option>
-                        ))}
-                      </select>
-                      {paymentUpdating && (
-                        <RotateCw className="w-3.5 h-3.5 animate-spin text-red-600" />
+                      {order.orderStatus === "CANCELLED" ? (
+                        <div
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-500 text-xs shadow-2xs"
+                          title="Payment status cannot be modified because this order is cancelled"
+                        >
+                          <OrderPaymentBadge status={order.paymentStatus} size="sm" />
+                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-slate-400" />
+                            <span>Locked (Cancelled)</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <select
+                            value={selectedPaymentStatus || order.paymentStatus}
+                            disabled={paymentUpdating}
+                            onChange={(e) => {
+                              const val = e.target.value as OrderPaymentStatus;
+                              setSelectedPaymentStatus(val);
+                              handleUpdatePaymentStatus(val);
+                            }}
+                            className="text-xs font-bold rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-800 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-100 cursor-pointer disabled:opacity-50"
+                          >
+                            {ALL_PAYMENT_STATUSES.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                          {paymentUpdating && (
+                            <RotateCw className="w-3.5 h-3.5 animate-spin text-red-600" />
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -540,76 +575,218 @@ export function OrderDetailsModal({
             </div>
 
             {/* 6. Status Workflow Action Area */}
-            <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="p-5 bg-gradient-to-b from-slate-50/60 to-white rounded-2xl border border-slate-200/90 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Update Order Workflow Status
-                  </h4>
-                  <p className="text-[11px] text-slate-400">
-                    Advance the order according to allowed dispatch transitions.
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-red-600 shrink-0" />
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Fulfillment Action Pipeline
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Advance the order sequentially or cancel before packing.
                   </p>
                 </div>
-                <OrderStatusBadge status={order.orderStatus} />
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400 font-medium">Current Status:</span>
+                  <OrderStatusBadge status={order.orderStatus} size="sm" />
+                </div>
               </div>
 
-              {/* Quick Transition Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {nextAllowed
-                  .filter((st) => st !== "CANCELLED")
-                  .map((target) => (
-                    <button
-                      key={target}
-                      type="button"
-                      disabled={statusUpdating}
-                      onClick={() => handleUpdateStatus(target)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
-                    >
-                      <span>Mark as {target}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-                    </button>
-                  ))}
-
-                {/* Cancel Button */}
-                {isCancellable && (
+              {/* Notice for PENDING order needing PAID status */}
+              {order.orderStatus === "PENDING" && order.paymentStatus !== "PAID" && (
+                <div className="p-3.5 bg-gradient-to-r from-amber-50 via-orange-50/60 to-amber-50 border border-amber-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-amber-950">Payment Verification Required</p>
+                      <p className="text-[11px] text-amber-700 mt-0.5">
+                        Order is currently <strong className="uppercase">{order.paymentStatus}</strong>. Payment must be marked as <strong>PAID</strong> before this order can be confirmed.
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    disabled={statusUpdating || cancelling}
-                    onClick={() => setIsCancelConfirmOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer border border-rose-200 disabled:opacity-50 ml-auto"
+                    onClick={() => handleUpdatePaymentStatus("PAID")}
+                    disabled={paymentUpdating}
+                    className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 font-bold rounded-xl shadow-xs shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ml-auto sm:ml-0"
                   >
-                    <Ban className="w-3.5 h-3.5" />
-                    <span>Cancel Order</span>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Mark as PAID Now</span>
                   </button>
-                )}
+                </div>
+              )}
+
+              {/* Main Action Buttons Strip */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Primary Advance Button */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {nextAllowed
+                    .filter((st) => st !== "CANCELLED")
+                    .map((target) => {
+                      const isPaidRequired =
+                        target === "CONFIRMED" && order.paymentStatus !== "PAID";
+
+                      // Style configuration tailored for each target stage
+                      let bgGradient =
+                        "from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white shadow-slate-900/15";
+                      let stageTitle = `Advance to ${target}`;
+                      let stageSubtitle = "Next workflow step";
+                      let StageIcon = ArrowRight;
+
+                      if (isPaidRequired) {
+                        bgGradient =
+                          "from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-500/20 border-amber-400/40";
+                        stageTitle = "Confirm Order";
+                        stageSubtitle = "⚠️ Requires PAID status";
+                        StageIcon = AlertTriangle;
+                      } else if (target === "CONFIRMED") {
+                        bgGradient =
+                          "from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-blue-600/25";
+                        stageTitle = "Confirm Order";
+                        stageSubtitle = "Reserve inventory & verify";
+                        StageIcon = CheckCircle2;
+                      } else if (target === "PROCESSING") {
+                        bgGradient =
+                          "from-purple-600 via-violet-600 to-purple-700 hover:from-purple-700 hover:to-violet-800 text-white shadow-purple-600/25";
+                        stageTitle = "Start Processing";
+                        stageSubtitle = "Send to warehouse packing line";
+                        StageIcon = RotateCw;
+                      } else if (target === "PACKED") {
+                        bgGradient =
+                          "from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-800 text-white shadow-teal-600/25";
+                        stageTitle = "Mark as Packed";
+                        stageSubtitle = "Boxes sealed & weighed";
+                        StageIcon = Package;
+                      } else if (target === "SHIPPED") {
+                        bgGradient =
+                          "from-indigo-600 via-sky-600 to-indigo-700 hover:from-indigo-700 hover:to-sky-800 text-white shadow-indigo-600/25";
+                        stageTitle = "Dispatch & Ship";
+                        stageSubtitle = "Handover to lorry / courier";
+                        StageIcon = Truck;
+                      } else if (target === "DELIVERED") {
+                        bgGradient =
+                          "from-emerald-600 via-green-600 to-emerald-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-emerald-600/25";
+                        stageTitle = "Mark as Delivered";
+                        stageSubtitle = "Completed delivery to client";
+                        StageIcon = CheckCircle2;
+                      }
+
+                      return (
+                        <button
+                          key={target}
+                          type="button"
+                          disabled={statusUpdating}
+                          onClick={() => handleUpdateStatus(target)}
+                          className={`group relative flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r ${bgGradient} border border-white/15 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50`}
+                          title={
+                            isPaidRequired
+                              ? "Order must be marked as PAID before confirming"
+                              : `Mark order as ${target}`
+                          }
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 group-hover:bg-white/30 transition-colors">
+                            <StageIcon className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="text-left">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-extrabold tracking-tight">
+                                {stageTitle}
+                              </span>
+                              <ChevronRight className="w-3.5 h-3.5 text-white/70 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                            <span className="text-[10px] text-white/80 font-medium block">
+                              {stageSubtitle}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {/* Cancel Action / Locked Indicator */}
+                <div className="ml-auto">
+                  {isCancellable ? (
+                    <button
+                      type="button"
+                      disabled={statusUpdating || cancelling}
+                      onClick={() => setIsCancelConfirmOpen(true)}
+                      className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 shadow-2xs hover:shadow-xs transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                      title="Cancel order (Permitted up to PROCESSING stage)"
+                    >
+                      <div className="w-7 h-7 rounded-xl bg-rose-100 group-hover:bg-rose-200/80 flex items-center justify-center transition-colors">
+                        <Ban className="w-3.5 h-3.5 text-rose-600" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block leading-none font-bold">Cancel Order</span>
+                        <span className="text-[10px] text-rose-400 font-normal">
+                          Available till processing
+                        </span>
+                      </div>
+                    </button>
+                  ) : (
+                    (order.orderStatus === "PACKED" ||
+                      order.orderStatus === "SHIPPED" ||
+                      order.orderStatus === "DELIVERED") && (
+                      <div
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs"
+                        title="Cancellation is permanently locked once packed or dispatched"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-[11px] font-medium">
+                          Cancellation closed ({order.orderStatus})
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
 
-              {/* Status Selector dropdown for manual jump */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                <span className="text-[11px] text-slate-500 font-medium">Or choose state:</span>
-                <select
-                  value={selectedNextStatus}
-                  onChange={(e) => setSelectedNextStatus(e.target.value as OrderStatus)}
-                  disabled={statusUpdating}
-                  className="text-xs rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700 outline-none cursor-pointer"
-                >
-                  <option value="">Select transition...</option>
-                  {ALL_ORDER_STATUSES.filter((s) => s !== order.orderStatus).map((st) => (
-                    <option key={st} value={st}>
-                      {st} {isValidStatusTransition(order.orderStatus, st) ? "(Allowed)" : ""}
-                    </option>
-                  ))}
-                </select>
+              {/* Status Selector dropdown for allowed transitions */}
+              {nextAllowed.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Or select from allowed transitions:
+                  </span>
+                  <div className="relative">
+                    <select
+                      value={selectedNextStatus}
+                      onChange={(e) => setSelectedNextStatus(e.target.value as OrderStatus)}
+                      disabled={statusUpdating}
+                      className="text-xs rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-1.5 text-slate-700 outline-none cursor-pointer focus:border-slate-400 shadow-2xs"
+                    >
+                      <option value="">Choose transition...</option>
+                      {nextAllowed.map((st) => {
+                        const isPaidReq = st === "CONFIRMED" && order.paymentStatus !== "PAID";
+                        return (
+                          <option key={st} value={st}>
+                            {st === "CANCELLED" ? "✕ Cancel Order" : `→ Advance to: ${st}`}{" "}
+                            {isPaidReq ? "⚠️ (Requires PAID)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
 
-                <button
-                  type="button"
-                  disabled={!selectedNextStatus || statusUpdating}
-                  onClick={() => selectedNextStatus && handleUpdateStatus(selectedNextStatus)}
-                  className="btn btn-primary text-xs py-1 px-3 cursor-pointer disabled:opacity-40"
-                >
-                  Apply
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    disabled={!selectedNextStatus || statusUpdating}
+                    onClick={() => {
+                      if (selectedNextStatus === "CANCELLED") {
+                        setIsCancelConfirmOpen(true);
+                      } else if (selectedNextStatus) {
+                        handleUpdateStatus(selectedNextStatus);
+                      }
+                    }}
+                    className="btn btn-primary text-xs py-1.5 px-3.5 rounded-xl cursor-pointer disabled:opacity-40 shadow-xs"
+                  >
+                    Apply Transition
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}

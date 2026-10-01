@@ -102,6 +102,12 @@ export function POSProductCard({
             ✓ In Cart
           </span>
         )}
+        {/* Discount Badge */}
+        {product.discountPercent && product.discountPercent > 0 && (
+          <span className="absolute top-1 right-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow-xs">
+            {product.discountPercent}% OFF
+          </span>
+        )}
       </div>
 
       {/* Content */}
@@ -114,14 +120,21 @@ export function POSProductCard({
         {/* Price + Action */}
         <div className="mt-auto pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1">
           <div>
-            <span className="font-bold text-xs text-red-600">
-              {formatINR(product.price)}
-            </span>
-            {product.originalPrice > product.price && (
-              <span className="text-[9px] text-slate-400 line-through block leading-none">
-                {formatINR(product.originalPrice)}
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="font-bold text-xs sm:text-sm text-red-600 font-mono">
+                {formatINR(product.price)}
               </span>
-            )}
+              {product.originalPrice > product.price && (
+                <span className="text-[10px] text-slate-400 line-through font-mono">
+                  {formatINR(product.originalPrice)}
+                </span>
+              )}
+            </div>
+            {product.discountPercent && product.discountPercent > 0 ? (
+              <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded inline-block">
+                Save {product.discountPercent}%
+              </span>
+            ) : null}
           </div>
 
           {/* Stepper with editable input */}

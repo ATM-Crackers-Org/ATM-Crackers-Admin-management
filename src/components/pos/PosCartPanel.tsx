@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Product, Order } from "@/data/mock-data";
 import { formatINR } from "@/lib/utils";
+import type { PosPaymentMethod, PosPaymentStatus } from "@/types/pos.types";
 import {
   ArrowLeft,
   Minus,
@@ -12,6 +13,11 @@ import {
   CheckCircle2,
   Tag,
   X,
+  CreditCard,
+  Banknote,
+  QrCode,
+  Building2,
+  BookOpen,
 } from "lucide-react";
 
 export interface BillCartItem {
@@ -22,9 +28,17 @@ export interface BillCartItem {
 interface POSCartPanelProps {
   cart: BillCartItem[];
   totalCartUnits: number;
+  totalMrp?: number;
+  productDiscount?: number;
   subtotal: number;
   couponDiscount: number;
   grandTotal: number;
+  paymentMethod: PosPaymentMethod;
+  onPaymentMethodChange: (val: PosPaymentMethod) => void;
+  paymentStatus: PosPaymentStatus;
+  onPaymentStatusChange: (val: PosPaymentStatus) => void;
+  amountReceived: string;
+  onAmountReceivedChange: (val: string) => void;
   customerName: string;
   onCustomerNameChange: (val: string) => void;
   customerPhone: string;
@@ -100,14 +114,25 @@ function CartItemRow({
         <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
           {product.name}
         </p>
-        <p className="text-[10px] text-slate-400 mt-0.5">
-          {formatINR(product.price)} ×{" "}
-          <span className="font-bold text-slate-600">{quantity}</span>
-          {" = "}
-          <span className="font-bold text-slate-800">
+        <div className="flex items-center gap-1.5 text-[10px] mt-0.5 flex-wrap">
+          <span className="font-bold text-red-600 font-mono">
+            {formatINR(product.price)}
+          </span>
+          {product.originalPrice > product.price && (
+            <span className="text-[9px] text-slate-400 line-through font-mono">
+              {formatINR(product.originalPrice)}
+            </span>
+          )}
+          {product.discountPercent && product.discountPercent > 0 ? (
+            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded">
+              {product.discountPercent}% off
+            </span>
+          ) : null}
+          <span className="text-slate-400">× {quantity} = </span>
+          <span className="font-bold text-slate-900 font-mono">
             {formatINR(product.price * quantity)}
           </span>
-        </p>
+        </div>
       </div>
 
       {/* Stepper with editable input */}
@@ -157,9 +182,17 @@ function CartItemRow({
 export function POSCartPanel({
   cart,
   totalCartUnits,
+  totalMrp,
+  productDiscount,
   subtotal,
   couponDiscount,
   grandTotal,
+  paymentMethod,
+  onPaymentMethodChange,
+  paymentStatus,
+  onPaymentStatusChange,
+  amountReceived,
+  onAmountReceivedChange,
   customerName,
   onCustomerNameChange,
   customerPhone,
@@ -215,30 +248,58 @@ export function POSCartPanel({
       </div>
 
       {/* ── Customer Info ───────────────────────── */}
-      <div className="px-3 py-2.5 border-b border-slate-100 flex flex-col gap-2 shrink-0 bg-slate-50/40">
+      <div className="px-3 py-2 border-b border-slate-100 flex flex-col gap-1.5 shrink-0 bg-slate-50/40">
         <div className="grid grid-cols-2 gap-2">
+          <div>
+            <input
+              type="text"
+              placeholder="Customer name (min 2)"
+              minLength={2}
+              maxLength={60}
+              value={customerName}
+              onChange={(e) => {
+                if (e.target.value.length <= 60) {
+                  onCustomerNameChange(e.target.value);
+                }
+              }}
+              title="Customer name: 2 to 60 characters"
+              className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
+            />
+          </div>
+          <div>
+            <input
+              type="tel"
+              placeholder="Phone (10-15 digits)"
+              minLength={10}
+              maxLength={15}
+              value={customerPhone}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9+\s-]/g, "");
+                if (val.length <= 15) {
+                  onCustomerPhoneChange(val);
+                }
+              }}
+              title="Phone number: 10 to 15 digits"
+              className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
+            />
+          </div>
+        </div>
+        <div>
           <input
             type="text"
-            placeholder="Customer name"
-            value={customerName}
-            onChange={(e) => onCustomerNameChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
-          />
-          <input
-            type="tel"
-            placeholder="Phone number"
-            value={customerPhone}
-            onChange={(e) => onCustomerPhoneChange(e.target.value)}
+            placeholder="Address / Town (min 3)"
+            minLength={3}
+            maxLength={150}
+            value={customerAddress}
+            onChange={(e) => {
+              if (e.target.value.length <= 150) {
+                onCustomerAddressChange(e.target.value);
+              }
+            }}
+            title="Address: 3 to 150 characters"
             className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
           />
         </div>
-        <input
-          type="text"
-          placeholder="Address / Town"
-          value={customerAddress}
-          onChange={(e) => onCustomerAddressChange(e.target.value)}
-          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-red-500 outline-none placeholder:text-slate-400"
-        />
       </div>
 
       {/* ── Cart Items ──────────────────────────── */}
@@ -310,20 +371,82 @@ export function POSCartPanel({
 
 
         {/* Bill Summary */}
-        <div className="px-3 py-2.5 space-y-1 border-b border-slate-100">
-          <div className="flex justify-between text-[11px] text-slate-500">
-            <span>Subtotal</span>
-            <span className="font-medium text-slate-700">{formatINR(subtotal)}</span>
+        <div className="px-3 py-2.5 space-y-1.5 border-b border-slate-100">
+          {totalMrp && totalMrp > subtotal && (
+            <div className="flex justify-between text-[11px] text-slate-500">
+              <span>Total MRP:</span>
+              <span className="font-medium text-slate-400 line-through font-mono">
+                {formatINR(totalMrp)}
+              </span>
+            </div>
+          )}
+          {productDiscount && productDiscount > 0 ? (
+            <div className="flex justify-between text-[11px] text-emerald-700 font-semibold">
+              <span>Special Discount:</span>
+              <span className="font-mono">− {formatINR(productDiscount)}</span>
+            </div>
+          ) : null}
+          <div className="flex justify-between text-[11px] text-slate-600">
+            <span>Subtotal (After Discount):</span>
+            <span className="font-bold text-slate-800 font-mono">{formatINR(subtotal)}</span>
           </div>
           {couponDiscount > 0 && (
             <div className="flex justify-between text-[11px] text-emerald-600 font-medium">
-              <span>Discount</span>
-              <span>− {formatINR(couponDiscount)}</span>
+              <span>Coupon Discount:</span>
+              <span className="font-mono">− {formatINR(couponDiscount)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-200 mt-1">
-            <span>Total</span>
-            <span className="text-red-600">{formatINR(grandTotal)}</span>
+            <span>Net Payable:</span>
+            <span className="text-red-600 text-base font-mono">{formatINR(grandTotal)}</span>
+          </div>
+          {((productDiscount || 0) + (couponDiscount || 0)) > 0 && (
+            <div className="mt-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded-md text-center">
+              🎉 Total Savings: {formatINR((productDiscount || 0) + (couponDiscount || 0))} on this bill!
+            </div>
+          )}
+        </div>
+
+        {/* ── Payment Method Option Only (Enum: CASH, UPI, CARD, BANK_TRANSFER, CREDIT) ── */}
+        <div className="px-3 py-2 border-b border-slate-100 bg-white">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-bold text-slate-700">
+              Payment Method
+            </span>
+            <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md font-mono">
+              {paymentMethod}
+            </span>
+          </div>
+
+          {/* 5 Payment Method Options: CASH, UPI, CARD, BANK_TRANSFER, CREDIT */}
+          <div className="grid grid-cols-5 gap-1.5">
+            {[
+              { id: "CASH", label: "Cash", icon: Banknote },
+              { id: "UPI", label: "UPI", icon: QrCode },
+              { id: "CARD", label: "Card", icon: CreditCard },
+              { id: "BANK_TRANSFER", label: "Bank", icon: Building2 },
+              { id: "CREDIT", label: "Credit", icon: BookOpen },
+            ].map(({ id, label, icon: Icon }) => {
+              const isSelected = paymentMethod === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => onPaymentMethodChange(id as PosPaymentMethod)}
+                  className={`py-2 px-1 rounded-lg text-center border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    isSelected
+                      ? "bg-red-600 border-red-600 text-white shadow-sm ring-2 ring-red-200"
+                      : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900"
+                  }`}
+                  title={id}
+                >
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-white" : "text-slate-500"}`} />
+                  <span className="text-[10px] font-bold tracking-tight truncate w-full leading-none">
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

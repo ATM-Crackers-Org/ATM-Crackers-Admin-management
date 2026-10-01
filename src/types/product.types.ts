@@ -61,6 +61,7 @@ export interface CreateProductPayload {
   description?: string;
   images?: string[];
   mrp: number;
+  sellingPrice?: number;
   discountPercent: number;
   stockStatus?: StockStatus;
   stockQuantity?: number;
@@ -76,6 +77,7 @@ export interface UpdateProductPayload {
   description?: string;
   images?: string[];
   mrp?: number;
+  sellingPrice?: number;
   discountPercent?: number;
   stockStatus?: StockStatus;
   stockQuantity?: number;

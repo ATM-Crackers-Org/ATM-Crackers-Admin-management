@@ -11,6 +11,7 @@ import {
   Package,
   Layers,
   ArrowUpDown,
+  Camera,
 } from "lucide-react";
 
 interface ProductTableProps {
@@ -18,6 +19,7 @@ interface ProductTableProps {
   onToggleActive: (product: ApiProduct) => void;
   onEdit: (product: ApiProduct) => void;
   onDelete: (id: string) => void;
+  onManageImages?: (product: ApiProduct) => void;
 }
 
 export const ProductTable: React.FC<ProductTableProps> = ({
@@ -25,6 +27,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   onToggleActive,
   onEdit,
   onDelete,
+  onManageImages,
 }) => {
   if (products.length === 0) {
     return (
@@ -70,12 +73,27 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   ? prod.category
                   : "General";
 
-              const sellingPrice =
-                prod.sellingPrice ??
-                Math.round(prod.mrp * (1 - (prod.discountPercent || 0) / 100));
+              const mrp = Number(prod.mrp) || 0;
+              const rawDiscount = Number(prod.discountPercent) || 0;
+              const rawSellingPrice = Number(prod.sellingPrice) || 0;
 
-              const isDiscounted =
-                prod.discountPercent > 0 && prod.mrp > sellingPrice;
+              // Proper discount calculation
+              const discountPercent =
+                rawDiscount > 0
+                  ? rawDiscount
+                  : mrp > 0 && rawSellingPrice > 0 && rawSellingPrice < mrp
+                  ? Math.round(((mrp - rawSellingPrice) / mrp) * 100)
+                  : 0;
+
+              const sellingPrice =
+                discountPercent > 0
+                  ? Math.max(0, Math.round(mrp * (1 - discountPercent / 100)))
+                  : rawSellingPrice > 0
+                  ? rawSellingPrice
+                  : mrp;
+
+              const isDiscounted = discountPercent > 0 && mrp > sellingPrice;
+              const savingsAmount = Math.max(0, mrp - sellingPrice);
 
               return (
                 <tr
@@ -85,18 +103,28 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   {/* Cracker Details */}
                   <td className="py-2 px-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-md border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
+                      {/* Product Thumbnail with Hover Overlay for Image Upload */}
+                      <div
+                        onClick={() => onManageImages && onManageImages(prod)}
+                        className="relative w-8 h-8 rounded-md border border-slate-200 overflow-hidden bg-slate-100 shrink-0 cursor-pointer group/img shadow-2xs"
+                        title="Click or hover to manage/upload product images"
+                      >
                         <img
                           src={primaryImage}
                           alt={prod.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-110"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
                               "https://placehold.co/600x600/F5A623/111827?text=ATM+Crackers";
                           }}
                         />
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-slate-900/65 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-[1px]">
+                          <Camera className="w-3.5 h-3.5" />
+                        </div>
                       </div>
-                      <div className="min-w-0 max-w-xs">
+                      <div className="min-w-0 max-w-sm">
                         <div className="font-semibold text-slate-800 text-xs truncate">
                           {prod.name}
                         </div>
@@ -104,6 +132,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           <div className="text-[10px] font-mono text-slate-400 truncate">
                             /{prod.slug}
                           </div>
+                        )}
+                        {prod.description && (
+                          <p
+                            className="text-[11px] text-slate-500 line-clamp-1 mt-0.5"
+                            title={prod.description}
+                          >
+                            {prod.description}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -126,20 +162,25 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
                   {/* Pricing */}
                   <td className="py-2 px-3">
-                    <div className="flex items-baseline gap-1.5">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
                       <span className="font-bold text-slate-900 text-xs">
                         {formatINR(sellingPrice)}
                       </span>
                       {isDiscounted && (
                         <span className="text-[10px] text-slate-400 line-through">
-                          {formatINR(prod.mrp)}
+                          {formatINR(mrp)}
                         </span>
                       )}
                     </div>
                     {isDiscounted && (
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1 py-0.2 rounded inline-block">
-                        {prod.discountPercent}% OFF
-                      </span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1 py-0.2 rounded inline-block">
+                          {discountPercent}% OFF
+                        </span>
+                        <span className="text-[9px] text-emerald-600 font-medium">
+                          (Save {formatINR(savingsAmount)})
+                        </span>
+                      </div>
                     )}
                   </td>
 
@@ -210,6 +251,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   {/* Actions */}
                   <td className="py-2 px-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {onManageImages && (
+                        <button
+                          onClick={() => onManageImages(prod)}
+                          className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+                          title="Manage Product Images"
+                          aria-label={`Manage images for ${prod.name}`}
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onEdit(prod)}
                         className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors cursor-pointer"

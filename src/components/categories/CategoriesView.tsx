@@ -6,11 +6,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { CategoryCard } from "./CategoryCard";
 import { CategoryFormModal } from "./CategoryFormModal";
+import { CategoryImageModal } from "./CategoryImageModal";
 import {
   getCategories,
   createCategory,
   updateCategory,
   deleteCategory as apiDeleteCategory,
+  uploadCategoryImage,
+  deleteCategoryImage,
 } from "@/services/category.service";
 import type {
   ApiCategory,
@@ -43,6 +46,7 @@ export const CategoriesView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ApiCategory | null>(null);
+  const [imageModalCategory, setImageModalCategory] = useState<ApiCategory | null>(null);
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -99,7 +103,9 @@ export const CategoriesView: React.FC = () => {
   };
 
   const handleFormSubmit = async (
-    payload: CreateCategoryPayload | UpdateCategoryPayload
+    payload: CreateCategoryPayload | UpdateCategoryPayload,
+    imageFile?: File | null,
+    removeExistingImage?: boolean
   ) => {
     if (editingCategory) {
       // Edit
@@ -107,6 +113,19 @@ export const CategoriesView: React.FC = () => {
         editingCategory._id,
         payload as UpdateCategoryPayload
       );
+      if (imageFile) {
+        try {
+          await uploadCategoryImage(editingCategory._id, imageFile);
+        } catch (uploadErr: any) {
+          toast.warning("Category updated, but image upload failed.");
+        }
+      } else if (removeExistingImage) {
+        try {
+          await deleteCategoryImage(editingCategory._id);
+        } catch (delErr: any) {
+          console.warn("Failed to delete category image:", delErr);
+        }
+      }
       setCategories((prev) =>
         prev.map((c) => (c._id === updated._id ? updated : c))
       );
@@ -114,6 +133,13 @@ export const CategoriesView: React.FC = () => {
     } else {
       // Create
       const created = await createCategory(payload as CreateCategoryPayload);
+      if (imageFile && created?._id) {
+        try {
+          await uploadCategoryImage(created._id, imageFile);
+        } catch (uploadErr: any) {
+          toast.warning("Category created, but image upload failed.");
+        }
+      }
       setCategories((prev) => [...prev, created]);
       toast.success(`Category "${created.name}" created successfully!`);
     }
@@ -337,6 +363,7 @@ export const CategoriesView: React.FC = () => {
               category={cat}
               onEdit={handleOpenEdit}
               onDelete={(id) => setDeleteTargetId(id)}
+              onManageImage={(c) => setImageModalCategory(c)}
             />
           ))}
         </div>
@@ -349,6 +376,20 @@ export const CategoriesView: React.FC = () => {
         category={editingCategory}
         defaultSortOrder={categories.length + 1}
         onSubmit={handleFormSubmit}
+      />
+
+      {/* Dedicated Category Image Upload Modal */}
+      <CategoryImageModal
+        isOpen={!!imageModalCategory}
+        onClose={() => setImageModalCategory(null)}
+        category={imageModalCategory}
+        onCategoryUpdated={(updatedCat) => {
+          setCategories((prev) =>
+            prev.map((c) => (c._id === updatedCat._id ? updatedCat : c))
+          );
+          setImageModalCategory(updatedCat);
+          loadCategories(true);
+        }}
       />
 
       {/* Reusable Delete Confirmation Modal */}

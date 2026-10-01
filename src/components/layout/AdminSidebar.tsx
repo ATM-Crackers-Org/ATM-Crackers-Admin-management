@@ -15,7 +15,6 @@ import {
   Users,
   Percent,
   Tag,
-  Image as ImageIcon,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -73,7 +72,6 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
       items: [
         { label: "Offers", href: "/offers", icon: Percent },
         { label: "Coupons", href: "/coupons", icon: Tag },
-        { label: "Banners", href: "/banners", icon: ImageIcon },
       ],
     },
     {

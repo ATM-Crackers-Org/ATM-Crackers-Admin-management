@@ -11,7 +11,13 @@ import {
 import { formatINR, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderPaymentBadge } from "./OrderPaymentBadge";
-import { canCancelOrder, isValidStatusTransition } from "@/validations/order.validation";
+import {
+  canCancelOrder,
+  isValidStatusTransition,
+  canTransitionToStatus,
+  getNextAllowedStatuses,
+} from "@/validations/order.validation";
+import { toast } from "react-toastify";
 import {
   Eye,
   Printer,
@@ -84,6 +90,14 @@ export function OrderTable({
     const newStatus = e.target.value as OrderStatus;
     if (newStatus === order.orderStatus || !onUpdateOrderStatus) return;
 
+    // Validate workflow transition & payment status prerequisite
+    const validation = canTransitionToStatus(order, newStatus);
+    if (!validation.allowed) {
+      toast.error(validation.reason || "Invalid status transition");
+      e.target.value = order.orderStatus;
+      return;
+    }
+
     setUpdatingAction({ orderNumber: order.orderNumber, field: "orderStatus" });
     try {
       await onUpdateOrderStatus(order, newStatus);
@@ -99,6 +113,12 @@ export function OrderTable({
     const newStatus = e.target.value as OrderPaymentStatus;
     if (newStatus === order.paymentStatus || !onUpdatePaymentStatus) return;
 
+    if (order.orderStatus === "CANCELLED") {
+      toast.error("Payment status cannot be changed for cancelled orders.");
+      e.target.value = order.paymentStatus;
+      return;
+    }
+
     setUpdatingAction({ orderNumber: order.orderNumber, field: "paymentStatus" });
     try {
       await onUpdatePaymentStatus(order, newStatus);
@@ -108,7 +128,7 @@ export function OrderTable({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+    <div className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs text-slate-600">
           <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
@@ -249,21 +269,31 @@ export function OrderTable({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative inline-flex items-center group/pay">
-                        <div className="flex items-center gap-1">
+                        <div
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border transition-all ${
+                            order.orderStatus === "CANCELLED"
+                              ? "bg-slate-100/70 border-slate-200/80 cursor-not-allowed opacity-80"
+                              : "hover:bg-slate-50 border-transparent hover:border-slate-200 cursor-pointer"
+                          }`}
+                        >
                           <OrderPaymentBadge status={order.paymentStatus} size="sm" />
                           {isPaymentUpdating ? (
                             <RotateCw className="w-3 h-3 animate-spin text-slate-500" />
-                          ) : (
+                          ) : order.orderStatus !== "CANCELLED" ? (
                             <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pay:text-slate-700 transition-colors" />
-                          )}
+                          ) : null}
                         </div>
 
                         {/* Interactive Select Overlay */}
                         <select
                           value={order.paymentStatus}
-                          disabled={isPaymentUpdating}
+                          disabled={isPaymentUpdating || order.orderStatus === "CANCELLED"}
                           onChange={(e) => handlePaymentStatusSelect(e, order)}
-                          title="Click to change payment status"
+                          title={
+                            order.orderStatus === "CANCELLED"
+                              ? "Payment status is locked for cancelled orders (Disabled)"
+                              : "Click to change payment status"
+                          }
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed text-xs"
                         >
                           {ALL_PAYMENT_STATUSES.map((status) => (
@@ -318,47 +348,67 @@ export function OrderTable({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative inline-flex items-center group/status">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50/90 hover:bg-slate-100/90 border border-slate-200/80 shadow-2xs group-hover/status:border-slate-300 transition-all cursor-pointer">
                           <OrderStatusBadge status={order.orderStatus} size="sm" />
                           {isStatusUpdating ? (
                             <RotateCw className="w-3 h-3 animate-spin text-slate-500" />
                           ) : (
-                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/status:text-slate-700 transition-colors" />
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/status:text-slate-700 transition-transform group-hover/status:translate-y-0.5" />
                           )}
                         </div>
 
                         {/* Interactive Select Overlay */}
                         <select
                           value={order.orderStatus}
-                          disabled={isStatusUpdating}
+                          disabled={
+                            isStatusUpdating ||
+                            order.orderStatus === "DELIVERED" ||
+                            order.orderStatus === "CANCELLED"
+                          }
                           onChange={(e) => handleOrderStatusSelect(e, order)}
-                          title="Click to advance or change order status"
+                          title={
+                            order.orderStatus === "DELIVERED" || order.orderStatus === "CANCELLED"
+                              ? `Order is ${order.orderStatus} (Terminal State)`
+                              : "Click to advance or cancel order"
+                          }
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed text-xs"
                         >
-                          {ALL_ORDER_STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {status}{" "}
-                              {isValidStatusTransition(order.orderStatus, status)
-                                ? "✓ (Allowed)"
-                                : ""}
-                            </option>
-                          ))}
+                          <option value={order.orderStatus} disabled>
+                            Current: {order.orderStatus}
+                          </option>
+                          {getNextAllowedStatuses(order.orderStatus).map((status) => {
+                            const isPaidReq =
+                              status === "CONFIRMED" && order.paymentStatus !== "PAID";
+                            if (status === "CANCELLED") {
+                              return (
+                                <option key={status} value={status}>
+                                  ✕ Cancel Order
+                                </option>
+                              );
+                            }
+                            return (
+                              <option key={status} value={status}>
+                                → Advance to: {status}{" "}
+                                {isPaidReq ? "⚠️ (Requires PAID)" : ""}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                     </td>
 
-                    {/* 8. Actions Column (WITH ACTIONS DROPDOWN & QUICK BUTTONS) */}
+                    {/* 8. Actions Column (WITH ENHANCED NEAT ACTION BUTTONS) */}
                     <td
                       className="py-2.5 px-3 text-right"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center justify-end gap-1 relative">
+                      <div className="flex items-center justify-end gap-1.5 relative">
                         {/* Quick View */}
                         <button
                           type="button"
                           onClick={() => onViewOrder(order)}
                           title="View order details"
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200/70 rounded-xl transition-all duration-150 hover:scale-105 active:scale-95 shadow-2xs cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -368,7 +418,7 @@ export function OrderTable({
                           type="button"
                           onClick={() => onPrintOrder(order)}
                           title="Print tax invoice"
-                          className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-red-600 hover:text-red-700 bg-red-50/70 hover:bg-red-100/80 border border-red-200/60 rounded-xl transition-all duration-150 hover:scale-105 active:scale-95 shadow-2xs cursor-pointer"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
@@ -383,10 +433,10 @@ export function OrderTable({
                               )
                             }
                             title="More actions"
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            className={`p-1.5 rounded-xl transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer border shadow-2xs ${
                               isActionMenuOpen
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                ? "bg-slate-900 text-white border-slate-900"
+                                : "text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-200/70"
                             }`}
                           >
                             <MoreVertical className="w-4 h-4" />
